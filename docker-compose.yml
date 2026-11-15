@@ -87,6 +87,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
     ports:
       - "${API_GATEWAY_PORT:-8000}:8000"
+      - "8080:8000"
     depends_on:
       identity-service:
         condition: service_healthy

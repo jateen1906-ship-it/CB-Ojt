@@ -69,13 +69,18 @@ class EmailAlreadyExistsError(IdentityError):
 
 
 class UnauthorizedError(IdentityError):
-    def __init__(self, message: str = "Authentication credentials were not provided.") -> None:
+    def __init__(self, message: str = "Authentication credentials were not provided.", error_code: str = "UNAUTHORIZED") -> None:
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            error_code="UNAUTHORIZED",
+            error_code=error_code,
             message=message,
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+class UnauthenticatedError(UnauthorizedError):
+    def __init__(self, message: str = "Authentication credentials were not provided.", error_code: str = "UNAUTHORIZED") -> None:
+        super().__init__(message=message, error_code=error_code)
 
 
 class ForbiddenError(IdentityError):

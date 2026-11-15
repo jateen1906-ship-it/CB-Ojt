@@ -63,11 +63,19 @@ def create_app(
     # Middlewares (ordered from inner to outer)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=resolved_settings.CORS_ORIGINS,
-        allow_credentials=resolved_settings.CORS_ALLOW_CREDENTIALS,
-        allow_methods=resolved_settings.CORS_ALLOW_METHODS,
-        allow_headers=resolved_settings.CORS_ALLOW_HEADERS,
-        expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+        allow_origins=resolved_settings.CORS_ORIGINS if "*" not in resolved_settings.CORS_ORIGINS else ["*"],
+        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.loca\.lt",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=[
+            "X-Request-ID",
+            "X-Correlation-Id",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+            "Retry-After",
+        ],
     )
     application.add_middleware(TokenBlacklistMiddleware, redis_manager=redis_manager)
     application.add_middleware(RateLimitMiddleware, redis_manager=redis_manager)

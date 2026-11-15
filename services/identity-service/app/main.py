@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.routes import auth_router, freelancers_router, profile_router
+from app.api.routes.users import talent_router, users_router
 from app.core.config import Settings, load_settings
 from app.core.correlation import CorrelationIDMiddleware
 from app.core.database import build_async_engine, build_session_factory
@@ -135,6 +136,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_v1_router.include_router(auth_router)
     api_v1_router.include_router(profile_router)
     api_v1_router.include_router(freelancers_router)
+    api_v1_router.include_router(users_router)
+    api_v1_router.include_router(talent_router)
     application.include_router(api_v1_router)
 
     return application

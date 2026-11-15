@@ -31,9 +31,11 @@ class RegisterRequest(BaseModel):
     @classmethod
     def _preprocess_fields(cls, data: object) -> object:
         if isinstance(data, dict):
-            # Support 'name' or 'username' if 'full_name' is missing
+            # Support 'displayName', 'name' or 'username' if 'full_name' is missing
             if "full_name" not in data or not str(data["full_name"]).strip():
-                if "name" in data and str(data["name"]).strip():
+                if "displayName" in data and str(data["displayName"]).strip():
+                    data["full_name"] = data["displayName"]
+                elif "name" in data and str(data["name"]).strip():
                     data["full_name"] = data["name"]
                 elif "username" in data and str(data["username"]).strip():
                     data["full_name"] = data["username"]
@@ -81,7 +83,7 @@ class RefreshTokenRequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    refresh_token: str = Field(..., min_length=10, max_length=4096)
+    refresh_token: str | None = Field(default=None, min_length=10, max_length=4096)
 
     @model_validator(mode="before")
     @classmethod
@@ -97,7 +99,7 @@ class LogoutRequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    refresh_token: str = Field(..., min_length=10, max_length=4096)
+    refresh_token: str | None = Field(default=None, min_length=10, max_length=4096)
 
     @model_validator(mode="before")
     @classmethod
@@ -111,10 +113,22 @@ class LogoutRequest(BaseModel):
 class TokenPairResponse(BaseModel):
     """Signed access and refresh token pair with expiration metadata."""
 
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
     access_token: str
     refresh_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int = Field(..., description="Access token lifetime in seconds.")
     refresh_expires_in: int = Field(..., description="Refresh token lifetime in seconds.")
     user: UserPublicResponse
+    accessToken: str | None = None
+    refreshToken: str | None = None
+    expiresIn: int | None = None
+
+    @model_validator(mode="after")
+    def _fill_frontend_aliases(self) -> TokenPairResponse:
+        self.accessToken = self.access_token
+        self.refreshToken = self.refresh_token
+        self.expiresIn = self.expires_in
+        return self
 

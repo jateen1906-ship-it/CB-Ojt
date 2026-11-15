@@ -81,6 +81,7 @@ def build_proxy_router(registry: ServiceRegistry) -> APIRouter:
     router = APIRouter(tags=["Gateway Proxy"])
 
     @router.websocket("/notifications/ws")
+    @router.websocket("/ws/events")
     async def proxy_notifications_websocket(websocket: WebSocket) -> None:
         service_registry: ServiceRegistry = websocket.app.state.service_registry
         service_def = service_registry.get_service("notification-service")

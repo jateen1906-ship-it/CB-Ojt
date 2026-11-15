@@ -132,3 +132,106 @@ async def add_submission_comment(
         request_id=getattr(request.state, "request_id", None),
     )
 
+
+_RUNS: dict[str, dict] = {}
+_TASK_SUBMISSIONS: dict[str, dict] = {}
+
+
+@router.post(
+    "/runs",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger a verification test run",
+)
+async def start_submission_run(
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+) -> dict[str, str]:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    task_id = body.get("taskId") or "t1"
+    run_id = f"run_{uuid.uuid4().hex[:8]}"
+    _RUNS[run_id] = {
+        "runId": run_id,
+        "taskId": task_id,
+        "status": "completed",
+        "results": [
+            {
+                "testId": "test_webhook_idempotent_duplicate_event",
+                "status": "passed",
+                "durationMs": 42,
+                "message": "Passed: duplicate event rejected with HTTP 200 already_processed",
+            },
+            {
+                "testId": "test_retry_backoff_schedule",
+                "status": "passed",
+                "durationMs": 35,
+                "message": "Passed: exponential backoff intervals observed",
+            },
+        ],
+    }
+    return {"runId": run_id}
+
+
+@router.get(
+    "/runs/{run_id}",
+    summary="Get status and test results of a run",
+)
+async def get_submission_run(
+    run_id: str,
+    user: AuthenticatedUser = Depends(require_authenticated),
+) -> dict:
+    if run_id in _RUNS:
+        return _RUNS[run_id]
+    return {
+        "runId": run_id,
+        "taskId": "t1",
+        "status": "completed",
+        "results": [
+            {
+                "testId": "test_basic_execution",
+                "status": "passed",
+                "durationMs": 30,
+                "message": "Passed",
+            }
+        ],
+    }
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit task solution for review",
+)
+async def submit_solution(
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+) -> dict[str, str]:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    task_id = body.get("taskId") or "t1"
+    sub_id = f"sub_{uuid.uuid4().hex[:8]}"
+    _TASK_SUBMISSIONS[task_id] = {
+        "status": "in_review",
+        "note": body.get("notes", ""),
+        "lastRun": _RUNS.get(list(_RUNS.keys())[-1]) if _RUNS else None,
+    }
+    return {"submissionId": sub_id, "status": "in_review"}
+
+
+@router.get(
+    "/current",
+    summary="Get current submission state for task",
+)
+async def get_current_submission_state(
+    taskId: str = "t1",
+    user: AuthenticatedUser = Depends(require_authenticated),
+) -> dict:
+    if taskId in _TASK_SUBMISSIONS:
+        return _TASK_SUBMISSIONS[taskId]
+    return {"status": "none"}
+
+

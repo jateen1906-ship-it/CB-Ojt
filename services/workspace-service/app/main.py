@@ -9,6 +9,7 @@ import httpx
 from fastapi import FastAPI
 
 from app.api.routes import health_router, workspaces_router
+from app.api.routes.task_workspaces import router as task_workspaces_router
 from app.clients.github_client import GitHubServiceClient
 from app.clients.identity_client import IdentityClient
 from app.clients.project_client import ProjectClient
@@ -87,6 +88,7 @@ def create_app(
     application.include_router(health_router)
     api_prefix = cfg.API_V1_PREFIX.rstrip("/")
     application.include_router(workspaces_router, prefix=api_prefix)
+    application.include_router(task_workspaces_router, prefix=api_prefix)
 
     return application
 

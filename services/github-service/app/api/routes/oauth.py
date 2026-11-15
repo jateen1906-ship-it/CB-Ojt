@@ -170,3 +170,39 @@ async def disconnect_github_account(
         request_id=get_request_id(request),
     )
 
+
+@router.get(
+    "/link/me",
+    summary="Get current user GitHub link status",
+)
+async def get_github_link_me(
+    request: Request,
+    auth_ctx: AuthContext | None = Depends(get_optional_auth_context),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    if not auth_ctx or not auth_ctx.user:
+        return {"connected": False}
+    from app.repositories.github_connection_repository import GitHubConnectionRepository
+    repo = GitHubConnectionRepository(session)
+    conn = await repo.get_active_by_owner_id(auth_ctx.user.id)
+    if conn:
+        return {"connected": True, "githubUsername": conn.github_login}
+    return {"connected": False}
+
+
+@router.post(
+    "/link/mock",
+    summary="Simulate GitHub link for development/onboarding",
+)
+async def mock_github_link(
+    request: Request,
+    auth_ctx: AuthContext | None = Depends(get_optional_auth_context),
+) -> dict:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    username = body.get("githubUsername") or "mock-developer"
+    return {"connected": True, "githubUsername": username}
+
+

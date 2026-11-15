@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from langchain_core.embeddings import Embeddings
 
 from app.api.routes import health_router, indexing_router, insights_router, query_router
+from app.api.routes.ai_context import router as ai_context_router
 from app.clients.github_client import GitHubServiceClient
 from app.clients.identity_client import IdentityClient
 from app.clients.project_client import ProjectClient
@@ -125,6 +126,7 @@ def create_app(
     application.include_router(indexing_router, prefix=api_prefix)
     application.include_router(query_router, prefix=api_prefix)
     application.include_router(insights_router, prefix=api_prefix)
+    application.include_router(ai_context_router, prefix=api_prefix)
 
     return application
 

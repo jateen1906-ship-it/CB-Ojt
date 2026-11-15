@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models.user import UserRole
 
@@ -13,7 +13,7 @@ from app.models.user import UserRole
 class UserPublicResponse(BaseModel):
     """Authenticated user identity data (never includes password hashes or tokens)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
     full_name: str
@@ -23,6 +23,18 @@ class UserPublicResponse(BaseModel):
     is_verified: bool
     created_at: datetime
     updated_at: datetime
+    displayName: str | None = None
+    status: str | None = None
+    onboardingCompleted: bool | None = True
+    onboarding_completed: bool | None = True
+
+    @model_validator(mode="after")
+    def _fill_frontend_aliases(self) -> UserPublicResponse:
+        if not self.displayName:
+            self.displayName = self.full_name
+        if not self.status:
+            self.status = "active" if self.is_active else "suspended"
+        return self
 
 
 class AdminUserCreateRequest(BaseModel):

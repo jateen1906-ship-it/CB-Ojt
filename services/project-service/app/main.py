@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.routes import assignments_router, projects_router
+from app.api.routes.tasks import router as tasks_router
 from app.clients.identity_client import IdentityClient
 from app.core.config import Settings, load_settings
 from app.core.database import build_async_engine, build_session_factory
@@ -136,6 +137,7 @@ def create_app(
     api_v1_router = APIRouter(prefix=resolved_settings.API_V1_PREFIX)
     api_v1_router.include_router(projects_router)
     api_v1_router.include_router(assignments_router)
+    api_v1_router.include_router(tasks_router)
     application.include_router(api_v1_router)
 
     return application

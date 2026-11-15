@@ -121,8 +121,25 @@ def build_service_registry(settings: Settings) -> ServiceRegistry:
     default_timeout = settings.REQUEST_TIMEOUT_SECONDS
 
     service_specs: list[tuple[str, str, tuple[tuple[str, int] | tuple[str, int, str], ...]]] = [
-        ("identity-service", settings.IDENTITY_SERVICE_URL, (("/auth", 100), ("/freelancers", 100), ("/profile", 100))),
-        ("project-service", settings.PROJECT_SERVICE_URL, (("/projects", 100),)),
+        (
+            "identity-service",
+            settings.IDENTITY_SERVICE_URL,
+            (
+                ("/auth", 100),
+                ("/freelancers", 100),
+                ("/profile", 100),
+                ("/users", 100),
+                ("/talent", 100),
+            ),
+        ),
+        (
+            "project-service",
+            settings.PROJECT_SERVICE_URL,
+            (
+                ("/projects", 100),
+                ("/tasks", 100),
+            ),
+        ),
         (
             "github-service",
             settings.GITHUB_SERVICE_URL,
@@ -131,8 +148,22 @@ def build_service_registry(settings: Settings) -> ServiceRegistry:
                 ("/github", 100),
             ),
         ),
-        ("code-context-service", settings.CODE_CONTEXT_SERVICE_URL, (("/code-context", 100),)),
-        ("workspace-service", settings.WORKSPACE_SERVICE_URL, (("/workspace", 100),)),
+        (
+            "code-context-service",
+            settings.CODE_CONTEXT_SERVICE_URL,
+            (
+                ("/code-context", 100),
+                ("/ai", 100),
+            ),
+        ),
+        (
+            "workspace-service",
+            settings.WORKSPACE_SERVICE_URL,
+            (
+                ("/workspace", 100),
+                ("/workspaces", 100),
+            ),
+        ),
         ("review-service", settings.REVIEW_SERVICE_URL, (("/submissions", 100), ("/review", 100))),
         (
             "verification-service",

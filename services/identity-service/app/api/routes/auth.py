@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from app.core.exceptions import UnauthenticatedError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -91,12 +92,23 @@ async def register_user(
 )
 async def login_user(
     request: Request,
+    response: Response,
     payload: LoginRequest,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> TokenPairResponse:
     service = AuthService(session, settings)
     tokens = await service.login(payload)
+
+    # Set httpOnly cookie for cross-app session persistence
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
 
     producer = getattr(request.app.state, "kafka_producer", None)
     if producer and producer.is_available:
@@ -129,12 +141,34 @@ async def login_user(
     },
 )
 async def refresh_tokens(
-    payload: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    payload: RefreshTokenRequest | None = None,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> TokenPairResponse:
+    token_str = None
+    if payload and payload.refresh_token:
+        token_str = payload.refresh_token
+    else:
+        token_str = request.cookies.get("refresh_token") or request.cookies.get("mock_rt")
+
+    if not token_str:
+        raise UnauthenticatedError("Missing refresh token", error_code="REFRESH_INVALID")
+
     service = AuthService(session, settings)
-    return await service.refresh(payload.refresh_token)
+    tokens = await service.refresh(token_str)
+
+    # Set rotated cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
+    return tokens
 
 
 @router.post(
@@ -153,16 +187,29 @@ async def refresh_tokens(
 )
 async def logout_user(
     request: Request,
-    payload: LogoutRequest,
+    response: Response,
+    payload: LogoutRequest | None = None,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
-    service = AuthService(session, settings)
-    await service.logout(
-        refresh_token=payload.refresh_token,
-        authenticated_user_id=current_user.id,
-    )
+    token_str = None
+    if payload and payload.refresh_token:
+        token_str = payload.refresh_token
+    else:
+        token_str = request.cookies.get("refresh_token") or request.cookies.get("mock_rt")
+
+    if token_str:
+        service = AuthService(session, settings)
+        try:
+            await service.logout(
+                refresh_token=token_str,
+                authenticated_user_id=current_user.id,
+            )
+        except Exception:
+            pass
+
+    response.delete_cookie(key="refresh_token", path="/")
 
     redis_mgr = getattr(request.app.state, "redis_manager", None)
     if redis_mgr and redis_mgr.is_available:
@@ -179,6 +226,12 @@ async def logout_user(
 
 
 @router.get(
+    "/users/me",
+    response_model=UserPublicResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get current authenticated user identity (alias for /users/me)",
+)
+@router.get(
     "/me",
     response_model=UserPublicResponse,
     status_code=status.HTTP_200_OK,
@@ -188,12 +241,52 @@ async def logout_user(
         "Authentication: Bearer access JWT (OWNER, FREELANCER, or ADMIN)."
     ),
     responses={
-        401: {"model": ErrorResponse, "description": "Unauthorized or invalid/expired token."},
-        403: {"model": ErrorResponse, "description": "Inactive account."},
+        401: {"model": ErrorResponse, "description": "Unauthorized or missing/expired token."},
+        403: {"model": ErrorResponse, "description": "Account is inactive."},
     },
 )
-async def get_me(current_user: User = Depends(get_current_user)) -> UserPublicResponse:
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+) -> UserPublicResponse:
     return UserPublicResponse.model_validate(current_user)
+
+
+@router.put(
+    "/users/me/owner-profile",
+    status_code=status.HTTP_200_OK,
+    summary="Update owner onboarding profile",
+)
+async def save_owner_profile_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    body = await request.json()
+    org_name = body.get("organizationName")
+    if org_name and not current_user.full_name:
+        current_user.full_name = org_name
+        await session.commit()
+    return {"profile": body, "onboardingCompleted": True}
+
+
+@router.put(
+    "/talent/profiles/me",
+    status_code=status.HTTP_200_OK,
+    summary="Update freelancer onboarding profile",
+)
+async def save_freelancer_profile_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    body = await request.json()
+    return {
+        "profile": {
+            **body,
+            "githubVerified": bool(body.get("githubUsername")),
+            "rating": None,
+        },
+        "onboardingCompleted": True,
+    }
 
 
 @router.post(

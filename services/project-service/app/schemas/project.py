@@ -77,30 +77,47 @@ def _validate_future_or_today_deadline(value: date) -> date:
 class ProjectCreateRequest(BaseModel):
     """OWNER-only project creation request payload."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     title: str = Field(..., min_length=3, max_length=200, examples=["Fix payment callback"])
     description: str = Field(
-        ...,
+        default="CodeBridge project milestone deliverables",
         min_length=5,
         max_length=10000,
         examples=["Payment succeeds but the callback is not saving the final status."],
     )
     expected_result: str = Field(
-        ...,
+        default="Verified code delivery matching requirements.",
         min_length=5,
         max_length=5000,
         examples=["Payment status is stored correctly after callback."],
     )
     budget: MoneyDecimal = Field(..., examples=["5000.00"])
     currency: str | None = Field(default=None, min_length=3, max_length=3, examples=["INR"])
-    deadline: date = Field(..., examples=["2026-12-20"])
+    deadline: date | None = Field(default=None, examples=["2026-12-20"])
     required_skills: list[str] = Field(
-        ...,
+        default_factory=lambda: ["TypeScript", "React"],
         min_length=1,
         max_length=30,
         examples=[["Python", "React", "API integration"]],
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _preprocess_create_payload(cls, data: object) -> object:
+        if isinstance(data, dict):
+            if "tags" in data and ("required_skills" not in data or not data["required_skills"]):
+                data["required_skills"] = data["tags"]
+            if "description" not in data or not str(data.get("description", "")).strip():
+                data["description"] = f"Deliverables for {data.get('title', 'Project')}"
+            if "expected_result" not in data or not str(data.get("expected_result", "")).strip():
+                data["expected_result"] = "Verified code delivery matching requirements."
+            if "deadline" not in data or not data.get("deadline"):
+                from datetime import timedelta
+                data["deadline"] = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+            if "required_skills" not in data or not data.get("required_skills"):
+                data["required_skills"] = ["Python", "FastAPI"]
+        return data
 
     @field_validator("title")
     @classmethod
@@ -223,6 +240,8 @@ class WorkflowTransitionRequest(BaseModel):
 class ProjectResponse(BaseModel):
     """Standard Project detail and listing item response."""
 
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
     id: uuid.UUID
     owner_id: uuid.UUID
     title: str
@@ -238,6 +257,23 @@ class ProjectResponse(BaseModel):
     published_at: datetime | None = None
     closed_at: datetime | None = None
     active_assignment: AssignmentPublicSummary | None = None
+    repo: str | None = None
+    freelancerName: str | None = None
+    updatedAt: datetime | None = None
+    tags: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _fill_frontend_aliases(self) -> ProjectResponse:
+        if not self.repo:
+            slug = self.title.lower().replace(" ", "-")[:30]
+            self.repo = f"codebridge/{slug}"
+        if not self.updatedAt:
+            self.updatedAt = self.updated_at
+        if not self.tags:
+            self.tags = self.required_skills
+        if not self.freelancerName and self.active_assignment:
+            self.freelancerName = str(self.active_assignment.freelancer_id)
+        return self
 
 
 class ProjectListResponse(BaseModel):
