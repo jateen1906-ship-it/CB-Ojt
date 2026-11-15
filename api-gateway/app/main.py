@@ -82,8 +82,10 @@ def create_app(
     application.add_middleware(CorrelationIDMiddleware)
 
     application.include_router(health_router)
+    proxy_router = build_proxy_router(service_registry)
+    application.include_router(proxy_router)
     application.include_router(
-        build_proxy_router(service_registry),
+        proxy_router,
         prefix=resolved_settings.API_V1_PREFIX,
     )
 

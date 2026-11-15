@@ -14,17 +14,84 @@ _DEFAULT_FILES: dict[str, dict[str, Any]] = {
     "README.md": {
         "path": "README.md",
         "language": "markdown",
-        "content": "# CodeBridge Workspace\n\nProject files loaded successfully.\n",
+        "content": (
+            "# Payments API\n\n"
+            "Microservice handling incoming webhook deliveries from our payment processing partner.\n\n"
+            "## Setup\n```bash\npip install -r requirements.txt\nuvicorn app.main:app --port 8000\n```\n\n"
+            "## Architecture\n"
+            "- `app/webhooks.py`: Inbound HMAC verification and event dispatcher.\n"
+            "- `app/retry.py`: Exponential backoff and retry scheduling.\n"
+            "- `app/state_machine.py`: Payment lifecycle management (authorized -> held -> released).\n"
+        ),
+    },
+    "requirements.txt": {
+        "path": "requirements.txt",
+        "language": "plaintext",
+        "content": "fastapi==0.111.0\nuvicorn==0.30.1\npydantic==2.7.4\npytest==8.2.2\nhttpx==0.27.0\n",
     },
     "app/main.py": {
         "path": "app/main.py",
         "language": "python",
-        "content": "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/health')\ndef health():\n    return {'status': 'healthy'}\n",
+        "content": (
+            "from fastapi import FastAPI, Request\n"
+            "from app.webhooks import handle_webhook\n\n"
+            "app = FastAPI(title='Acme Payments Webhook Service')\n\n"
+            "@app.get('/health')\ndef health_check():\n    return {'status': 'healthy'}\n\n"
+            "@app.post('/api/v1/webhooks/payment')\n"
+            "async def webhook_endpoint(request: Request):\n"
+            "    payload = await request.body()\n"
+            "    signature = request.headers.get('X-Signature', '')\n"
+            "    return await handle_webhook(payload, signature)\n"
+        ),
     },
     "app/webhooks.py": {
         "path": "app/webhooks.py",
         "language": "python",
-        "content": "import hmac, hashlib\n\nSECRET = b'whsec_demo_key_123'\n\ndef verify_signature(payload: bytes, signature: str) -> bool:\n    expected = hmac.new(SECRET, payload, hashlib.sha256).hexdigest()\n    return hmac.compare_digest(expected, signature)\n",
+        "content": (
+            "import hmac\nimport hashlib\nimport json\nfrom fastapi import HTTPException\n\n"
+            "SECRET = b'whsec_production_demo_key_987654'\n\n"
+            "def verify_signature(payload: bytes, signature: str) -> bool:\n"
+            "    expected = hmac.new(SECRET, payload, hashlib.sha256).hexdigest()\n"
+            "    return hmac.compare_digest(expected, signature)\n\n"
+            "async def handle_webhook(payload: bytes, signature: str):\n"
+            "    if not verify_signature(payload, signature):\n"
+            "        raise HTTPException(status_code=400, detail='Invalid HMAC signature')\n\n"
+            "    data = json.loads(payload.decode('utf-8'))\n"
+            "    event_id = data.get('id')\n"
+            "    return {'status': 'processed', 'eventId': event_id}\n"
+        ),
+    },
+    "app/retry.py": {
+        "path": "app/retry.py",
+        "language": "python",
+        "content": (
+            "def calculate_retry_delay(attempt: int) -> int:\n"
+            "    return min(2 ** attempt, 32)\n\n"
+            "def should_retry(attempt: int) -> bool:\n"
+            "    return attempt < 5\n"
+        ),
+    },
+    "app/state_machine.py": {
+        "path": "app/state_machine.py",
+        "language": "python",
+        "content": (
+            "from enum import Enum\n\n"
+            "class PaymentState(str, Enum):\n"
+            "    AUTHORIZED = 'authorized'\n"
+            "    HELD = 'held'\n"
+            "    APPROVED = 'approved'\n"
+            "    RELEASED = 'released'\n"
+        ),
+    },
+    "tests/test_webhooks.py": {
+        "path": "tests/test_webhooks.py",
+        "language": "python",
+        "content": (
+            "import pytest\n"
+            "from app.webhooks import verify_signature\n\n"
+            "def test_signature_validation():\n"
+            "    assert verify_signature(b'test', 'invalid') is False\n"
+        ),
     },
 }
 
@@ -102,6 +169,7 @@ async def get_task_files(
     return {
         "commit": "a1b2c3d",
         "items": items,
+        "files": items,
     }
 
 
