@@ -4,6 +4,7 @@
 
 services:
   postgres:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: codebridge-postgres
     environment:
@@ -74,13 +75,10 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8001
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_identity
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_identity${POSTGRES_SSL_PARAM:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
     ports:
       - "${IDENTITY_SERVICE_PORT:-8001}:8001"
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
       interval: 10s
@@ -99,13 +97,11 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8002
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_project
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_project${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
     ports:
       - "${PROJECT_SERVICE_PORT:-8002}:8002"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
     healthcheck:
@@ -126,7 +122,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8003
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_github
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_github${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-dev-github-client-id-placeholder}
@@ -136,8 +132,6 @@ services:
     ports:
       - "${GITHUB_SERVICE_PORT:-8003}:8003"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -160,7 +154,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8004
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_code_context
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_code_context${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       GITHUB_SERVICE_URL: http://github-service:8003
@@ -171,8 +165,6 @@ services:
     ports:
       - "${CODE_CONTEXT_SERVICE_PORT:-8004}:8004"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -197,7 +189,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8005
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_workspace
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_workspace${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       GITHUB_SERVICE_URL: http://github-service:8003
@@ -207,8 +199,6 @@ services:
     ports:
       - "${WORKSPACE_SERVICE_PORT:-8005}:8005"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -233,7 +223,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8006
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_review
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_review${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       WORKSPACE_SERVICE_URL: http://workspace-service:8005
@@ -243,8 +233,6 @@ services:
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -269,7 +257,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8007
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_verification
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_verification${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       GITHUB_SERVICE_URL: http://github-service:8003
@@ -281,8 +269,6 @@ services:
     ports:
       - "${VERIFICATION_SERVICE_PORT:-8007}:8007"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -307,7 +293,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8008
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_payment
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_payment${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       REVIEW_SERVICE_URL: http://review-service:8006
@@ -317,8 +303,6 @@ services:
     ports:
       - "${PAYMENT_SERVICE_PORT:-8008}:8008"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -343,14 +327,12 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8009
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_notification
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_notification${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
     ports:
       - "${NOTIFICATION_SERVICE_PORT:-8009}:8009"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
     healthcheck:
@@ -371,7 +353,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8010
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_admin
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_admin${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       PAYMENT_SERVICE_URL: http://payment-service:8008
@@ -381,8 +363,6 @@ services:
     ports:
       - "${ADMIN_SERVICE_PORT:-8010}:8010"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
       project-service:
@@ -405,15 +385,13 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8011
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_audit
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_audit${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
     ports:
       - "${AUDIT_SERVICE_PORT:-8011}:8011"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
     healthcheck:
@@ -434,7 +412,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8012
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/codebridge_observability
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_observability${POSTGRES_SSL_PARAM:-}
       API_GATEWAY_URL: http://api-gateway:8000
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
@@ -451,8 +429,6 @@ services:
     ports:
       - "${OBSERVABILITY_SERVICE_PORT:-8012}:8012"
     depends_on:
-      postgres:
-        condition: service_healthy
       identity-service:
         condition: service_healthy
     healthcheck:
