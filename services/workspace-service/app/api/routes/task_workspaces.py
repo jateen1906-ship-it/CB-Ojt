@@ -57,32 +57,35 @@ async def get_task_workspace(
     return _get_or_create_workspace(task_id)
 
 
-@router.post("/{task_id}/start", status_code=status.HTTP_202_ACCEPTED, summary="Start workspace")
+@router.post("/{task_id}/start", status_code=status.HTTP_200_OK, summary="Start workspace")
 async def start_task_workspace(
     task_id: str,
     auth_ctx: AuthContext = Depends(require_any_authenticated),
-) -> None:
+) -> dict[str, str]:
     ws = _get_or_create_workspace(task_id)
     ws["status"] = "running"
+    return {"status": "running"}
 
 
-@router.post("/{task_id}/stop", status_code=status.HTTP_202_ACCEPTED, summary="Stop workspace")
+@router.post("/{task_id}/stop", status_code=status.HTTP_200_OK, summary="Stop workspace")
 async def stop_task_workspace(
     task_id: str,
     auth_ctx: AuthContext = Depends(require_any_authenticated),
-) -> None:
+) -> dict[str, str]:
     ws = _get_or_create_workspace(task_id)
     ws["status"] = "stopped"
+    return {"status": "stopped"}
 
 
-@router.post("/{task_id}/reset", status_code=status.HTTP_202_ACCEPTED, summary="Reset workspace")
+@router.post("/{task_id}/reset", status_code=status.HTTP_200_OK, summary="Reset workspace")
 async def reset_task_workspace(
     task_id: str,
     auth_ctx: AuthContext = Depends(require_any_authenticated),
-) -> None:
+) -> dict[str, str]:
     ws = _get_or_create_workspace(task_id)
     ws["status"] = "running"
     _WORKSPACE_FILES[task_id] = {k: dict(v) for k, v in _DEFAULT_FILES.items()}
+    return {"status": "running"}
 
 
 @router.get("/{task_id}/files", summary="Get workspace file tree")

@@ -67,70 +67,6 @@ async def list_project_submissions(
     )
 
 
-@router.get("/{submission_id}", response_model=SubmissionResponse)
-async def get_submission(
-    submission_id: uuid.UUID,
-    request: Request,
-    user: AuthenticatedUser = Depends(require_authenticated),
-    session: AsyncSession = Depends(get_db_session),
-) -> SubmissionResponse:
-    service = _service(request, session)
-    return await service.get_submission(
-        submission_id=submission_id,
-        user=user,
-        request_id=getattr(request.state, "request_id", None),
-    )
-
-
-@router.post("/{submission_id}/submit", response_model=SubmissionResponse)
-async def submit_draft(
-    submission_id: uuid.UUID,
-    request: Request,
-    freelancer: AuthenticatedUser = Depends(require_freelancer),
-    session: AsyncSession = Depends(get_db_session),
-) -> SubmissionResponse:
-    service = _service(request, session)
-    return await service.submit_draft(
-        submission_id=submission_id,
-        freelancer=freelancer,
-        request_id=getattr(request.state, "request_id", None),
-    )
-
-
-@router.post("/{submission_id}/withdraw", response_model=SubmissionResponse)
-async def withdraw_submission(
-    submission_id: uuid.UUID,
-    request: Request,
-    freelancer: AuthenticatedUser = Depends(require_freelancer),
-    session: AsyncSession = Depends(get_db_session),
-) -> SubmissionResponse:
-    service = _service(request, session)
-    return await service.withdraw_submission(
-        submission_id=submission_id,
-        freelancer=freelancer,
-        request_id=getattr(request.state, "request_id", None),
-    )
-
-
-@router.post(
-    "/{submission_id}/comments",
-    response_model=ReviewCommentResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def add_submission_comment(
-    submission_id: uuid.UUID,
-    payload: CommentCreateRequest,
-    request: Request,
-    user: AuthenticatedUser = Depends(require_authenticated),
-    session: AsyncSession = Depends(get_db_session),
-) -> ReviewCommentResponse:
-    service = _service(request, session)
-    return await service.add_comment(
-        submission_id=submission_id,
-        payload=payload,
-        user=user,
-        request_id=getattr(request.state, "request_id", None),
-    )
 
 
 _RUNS: dict[str, dict] = {}
@@ -233,5 +169,73 @@ async def get_current_submission_state(
     if taskId in _TASK_SUBMISSIONS:
         return _TASK_SUBMISSIONS[taskId]
     return {"status": "none"}
+
+
+@router.get("/{submission_id}", response_model=SubmissionResponse)
+async def get_submission(
+    submission_id: uuid.UUID,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> SubmissionResponse:
+    service = _service(request, session)
+    return await service.get_submission(
+        submission_id=submission_id,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post("/{submission_id}/submit", response_model=SubmissionResponse)
+async def submit_draft(
+    submission_id: uuid.UUID,
+    request: Request,
+    freelancer: AuthenticatedUser = Depends(require_freelancer),
+    session: AsyncSession = Depends(get_db_session),
+) -> SubmissionResponse:
+    service = _service(request, session)
+    return await service.submit_draft(
+        submission_id=submission_id,
+        freelancer=freelancer,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post("/{submission_id}/withdraw", response_model=SubmissionResponse)
+async def withdraw_submission(
+    submission_id: uuid.UUID,
+    request: Request,
+    freelancer: AuthenticatedUser = Depends(require_freelancer),
+    session: AsyncSession = Depends(get_db_session),
+) -> SubmissionResponse:
+    service = _service(request, session)
+    return await service.withdraw_submission(
+        submission_id=submission_id,
+        freelancer=freelancer,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post(
+    "/{submission_id}/comments",
+    response_model=ReviewCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_submission_comment(
+    submission_id: uuid.UUID,
+    payload: CommentCreateRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> ReviewCommentResponse:
+    service = _service(request, session)
+    return await service.add_comment(
+        submission_id=submission_id,
+        payload=payload,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
 
 
