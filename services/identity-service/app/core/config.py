@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     REDIS_URL: str | None = None
     REDIS_ENABLED: bool = True
 
+    # Kafka configuration
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
+    KAFKA_ENABLED: bool = True
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def _parse_debug(cls, value: object) -> bool:

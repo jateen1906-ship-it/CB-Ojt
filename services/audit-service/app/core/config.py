@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = Field(default=10, ge=1, le=100)
     DATABASE_MAX_OVERFLOW: int = Field(default=20, ge=0, le=200)
 
+    # Kafka configuration
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
+    KAFKA_ENABLED: bool = True
+
     IDENTITY_SERVICE_URL: str = "http://localhost:8001"
     PROJECT_SERVICE_URL: str = "http://localhost:8002"
     SERVICE_CLIENT_TIMEOUT_SECONDS: float = Field(default=10.0, gt=0.0, le=60.0)

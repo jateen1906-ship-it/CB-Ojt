@@ -19,6 +19,7 @@ from app.clients.service_clients import (
 from app.core.config import Settings, load_settings
 from app.core.database import build_async_engine, build_session_factory
 from app.core.exceptions import register_exception_handlers
+from app.core.kafka_producer import PaymentKafkaProducer
 from app.core.logging import configure_logging, get_logger, request_id_ctx
 from app.core.redis_client import PaymentRedisManager
 
@@ -33,9 +34,11 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         logger.info("Payment Service started", extra={"event": "service_startup"})
         await app.state.redis_manager.startup()
+        await app.state.kafka_producer.startup()
         try:
             yield
         finally:
+            await app.state.kafka_producer.shutdown()
             await app.state.redis_manager.shutdown()
             await app.state.engine.dispose()
             logger.info("Payment Service shut down cleanly", extra={"event": "service_shutdown"})
@@ -52,6 +55,10 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = build_session_factory(engine)
     app.state.redis_manager = PaymentRedisManager(settings)
+    app.state.kafka_producer = PaymentKafkaProducer(
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        enabled=settings.KAFKA_ENABLED,
+    )
     app.state.identity_client = IdentityClient(
         base_url=settings.IDENTITY_SERVICE_URL,
         timeout_seconds=settings.SERVICE_CLIENT_TIMEOUT_SECONDS,

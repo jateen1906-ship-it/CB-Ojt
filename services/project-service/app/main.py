@@ -16,6 +16,7 @@ from app.core.logging import configure_logging, get_logger
 from app.core.security import CorrelationIDMiddleware
 from app.clients.identity_client import IdentityClient
 from app.api.routes import assignments_router, projects_router
+from app.core.kafka_producer import ProjectKafkaProducer
 from app.core.redis_client import ProjectRedisManager
 from app.schemas.common import HealthResponse
 
@@ -49,15 +50,21 @@ def create_app(
     session_factory = build_session_factory(engine)
     identity_client = IdentityClient(resolved_settings, transport=identity_transport)
     redis_manager = ProjectRedisManager(resolved_settings)
+    kafka_producer = ProjectKafkaProducer(
+        bootstrap_servers=resolved_settings.KAFKA_BOOTSTRAP_SERVERS,
+        enabled=resolved_settings.KAFKA_ENABLED,
+    )
 
     @asynccontextmanager
     async def lifespan(_application: FastAPI):
         await identity_client.startup()
         await redis_manager.startup()
+        await kafka_producer.startup()
         logger.info("Starting CodeBridge Project Service", extra={"event": "service_startup"})
         try:
             yield
         finally:
+            await kafka_producer.shutdown()
             await redis_manager.shutdown()
             await identity_client.close()
             await engine.dispose()
@@ -81,6 +88,7 @@ def create_app(
     application.state.session_factory = session_factory
     application.state.identity_client = identity_client
     application.state.redis_manager = redis_manager
+    application.state.kafka_producer = kafka_producer
 
     register_exception_handlers(application)
     application.add_middleware(CorrelationIDMiddleware)

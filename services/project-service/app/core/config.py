@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     REDIS_ENABLED: bool = True
     CACHE_DEFAULT_TTL_SECONDS: int = 300
 
+    # Kafka configuration
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
+    KAFKA_ENABLED: bool = True
+
     # Synchronous HTTP/REST Identity Service integration
     IDENTITY_SERVICE_URL: str = "http://localhost:8001"
     IDENTITY_SERVICE_TIMEOUT_SECONDS: float = Field(default=5.0, gt=0.0, le=60.0)

@@ -14,6 +14,7 @@ from app.clients.identity_client import IdentityClient
 from app.core.config import Settings, load_settings
 from app.core.database import build_async_engine, build_session_factory
 from app.core.exceptions import register_exception_handlers
+from app.core.kafka_consumer import NotificationKafkaConsumer
 from app.core.logging import configure_logging, get_logger, request_id_ctx
 from app.core.ws import NotificationWebSocketManager
 
@@ -24,12 +25,18 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     settings = settings_override or load_settings()
     configure_logging(settings.LOG_LEVEL)
 
+    engine = build_async_engine(settings)
+    session_factory = build_session_factory(engine)
+    kafka_consumer = NotificationKafkaConsumer(settings=settings, session_factory=session_factory)
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info("Notification Service started", extra={"event": "service_startup"})
+        await kafka_consumer.startup()
         try:
             yield
         finally:
+            await kafka_consumer.shutdown()
             await app.state.engine.dispose()
             logger.info("Notification Service shut down cleanly", extra={"event": "service_shutdown"})
 
@@ -39,10 +46,10 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         debug=settings.DEBUG,
         lifespan=lifespan,
     )
-    engine = build_async_engine(settings)
     app.state.settings = settings
     app.state.engine = engine
-    app.state.session_factory = build_session_factory(engine)
+    app.state.session_factory = session_factory
+    app.state.kafka_consumer = kafka_consumer
     app.state.ws_manager = NotificationWebSocketManager()
     app.state.identity_client = IdentityClient(
         base_url=settings.IDENTITY_SERVICE_URL,

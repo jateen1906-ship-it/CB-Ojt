@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     REDIS_URL: str | None = None
     REDIS_ENABLED: bool = True
 
+    # Kafka configuration
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
+    KAFKA_ENABLED: bool = True
+
     IDENTITY_SERVICE_URL: str = "http://localhost:8001"
     PROJECT_SERVICE_URL: str = "http://localhost:8002"
     REVIEW_SERVICE_URL: str = "http://localhost:8006"

@@ -3,6 +3,33 @@
 # ==============================================================================
 
 services:
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: codebridge-kafka
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codebridge-net
+
   postgres:
     profiles: ["local-db"]
     image: postgres:16-alpine
@@ -52,6 +79,8 @@ services:
       REQUEST_TIMEOUT_SECONDS: ${HTTP_CLIENT_TIMEOUT_SECONDS:-10.0}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
       AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-20}
@@ -85,6 +114,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${IDENTITY_SERVICE_PORT:-8001}:8001"
     healthcheck:
@@ -109,6 +140,8 @@ services:
       IDENTITY_SERVICE_URL: http://identity-service:8001
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${PROJECT_SERVICE_PORT:-8002}:8002"
     depends_on:
@@ -242,6 +275,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
     depends_on:
@@ -279,6 +314,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
       VERIFICATION_SIGNING_SECRET: ${VERIFICATION_SIGNING_SECRET:-dev-verification-hmac-secret-change-me-32chars}
     ports:
       - "${VERIFICATION_SERVICE_PORT:-8007}:8007"
@@ -316,6 +353,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${PAYMENT_SERVICE_PORT:-8008}:8008"
     depends_on:
@@ -348,6 +387,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${NOTIFICATION_SERVICE_PORT:-8009}:8009"
     depends_on:
@@ -380,6 +421,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${ADMIN_SERVICE_PORT:-8010}:8010"
     depends_on:
@@ -411,6 +454,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${AUDIT_SERVICE_PORT:-8011}:8011"
     depends_on:
@@ -450,6 +495,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
       REDIS_URL: ${REDIS_URL:-}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
     ports:
       - "${OBSERVABILITY_SERVICE_PORT:-8012}:8012"
     depends_on:

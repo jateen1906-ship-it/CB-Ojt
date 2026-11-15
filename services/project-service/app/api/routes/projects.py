@@ -64,6 +64,19 @@ async def create_project(
     if redis_mgr and redis_mgr.is_available:
         await redis_mgr.delete_pattern("codebridge:projects:list:*")
 
+    # Publish Kafka event
+    producer = getattr(request.app.state, "kafka_producer", None)
+    if producer and producer.is_available:
+        await producer.publish_project_event(
+            event_type="project.created",
+            project_id=str(created.id),
+            payload={
+                "title": created.title,
+                "owner_id": str(created.owner_id),
+                "status": created.status.value if hasattr(created.status, "value") else str(created.status),
+            },
+        )
+
     return created
 
 

@@ -49,13 +49,28 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     },
 )
 async def register_user(
+    request: Request,
     payload: RegisterRequest,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> UserPublicResponse:
     service = AuthService(session, settings)
     user = await service.register(payload)
-    return UserPublicResponse.model_validate(user)
+    response = UserPublicResponse.model_validate(user)
+
+    producer = getattr(request.app.state, "kafka_producer", None)
+    if producer and producer.is_available:
+        await producer.publish_auth_event(
+            event_type="user.registered",
+            user_id=str(user.id),
+            payload={
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+            },
+        )
+
+    return response
 
 
 @router.post(
@@ -75,12 +90,23 @@ async def register_user(
     },
 )
 async def login_user(
+    request: Request,
     payload: LoginRequest,
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> TokenPairResponse:
     service = AuthService(session, settings)
-    return await service.login(payload)
+    tokens = await service.login(payload)
+
+    producer = getattr(request.app.state, "kafka_producer", None)
+    if producer and producer.is_available:
+        await producer.publish_auth_event(
+            event_type="user.login",
+            user_id=str(tokens.user.id),
+            payload={"email": payload.email, "role": tokens.user.role},
+        )
+
+    return tokens
 
 
 @router.post(
