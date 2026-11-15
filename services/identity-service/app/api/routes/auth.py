@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.database import get_db_session
 from app.core.dependencies import get_current_user, get_settings, require_admin
+from app.core.security import decode_token
 from app.models.user import User, UserRole
 from app.schemas.auth import (
     LoginRequest,
@@ -125,6 +126,7 @@ async def refresh_tokens(
     },
 )
 async def logout_user(
+    request: Request,
     payload: LogoutRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
@@ -135,6 +137,18 @@ async def logout_user(
         refresh_token=payload.refresh_token,
         authenticated_user_id=current_user.id,
     )
+
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    if redis_mgr and redis_mgr.is_available:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                token_str = auth_header[7:].strip()
+                claims = decode_token(token=token_str, expected_type="access", settings=settings)
+                await redis_mgr.blacklist_token(str(claims.jti), ttl_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+            except Exception as exc:
+                pass
+
     return MessageResponse(message="Logged out successfully.")
 
 

@@ -20,6 +20,7 @@ from app.core.config import Settings, load_settings
 from app.core.database import build_async_engine, build_session_factory
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger, request_id_ctx
+from app.core.redis_client import PaymentRedisManager
 
 logger = get_logger("main")
 
@@ -31,9 +32,11 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info("Payment Service started", extra={"event": "service_startup"})
+        await app.state.redis_manager.startup()
         try:
             yield
         finally:
+            await app.state.redis_manager.shutdown()
             await app.state.engine.dispose()
             logger.info("Payment Service shut down cleanly", extra={"event": "service_shutdown"})
 
@@ -48,6 +51,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = build_session_factory(engine)
+    app.state.redis_manager = PaymentRedisManager(settings)
     app.state.identity_client = IdentityClient(
         base_url=settings.IDENTITY_SERVICE_URL,
         timeout_seconds=settings.SERVICE_CLIENT_TIMEOUT_SECONDS,

@@ -35,11 +35,20 @@ def _service(request: Request, session: AsyncSession) -> PaymentService:
 
 @router.get("/summary", response_model=None)
 async def get_payment_summary(
+    request: Request,
     user: AuthenticatedUser = Depends(require_authenticated),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Return consolidated payment & escrow summary for authenticated user."""
-    return {
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    cache_key = f"codebridge:payment:summary:{user.id}"
+
+    if redis_mgr and redis_mgr.is_available:
+        cached = await redis_mgr.get_json(cache_key)
+        if cached is not None:
+            return cached
+
+    summary = {
         "total_spent": 0.0,
         "total_escrow": 0.0,
         "held_amount": 0.0,
@@ -50,6 +59,11 @@ async def get_payment_summary(
         "transactions_count": 0,
         "items": [],
     }
+
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.set_json(cache_key, summary, ttl_seconds=60)
+
+    return summary
 
 
 @router.post(

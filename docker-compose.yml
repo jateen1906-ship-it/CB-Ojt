@@ -50,6 +50,12 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8011
       OBSERVABILITY_SERVICE_URL: http://observability-service:8012
       REQUEST_TIMEOUT_SECONDS: ${HTTP_CLIENT_TIMEOUT_SECONDS:-10.0}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-20}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
     ports:
       - "${API_GATEWAY_PORT:-8000}:8000"
     depends_on:
@@ -77,6 +83,8 @@ services:
       PORT: 8001
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_identity${POSTGRES_SSL_PARAM:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${IDENTITY_SERVICE_PORT:-8001}:8001"
     healthcheck:
@@ -99,6 +107,8 @@ services:
       PORT: 8002
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_project${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${PROJECT_SERVICE_PORT:-8002}:8002"
     depends_on:
@@ -230,6 +240,8 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
     depends_on:
@@ -265,6 +277,8 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
       VERIFICATION_SIGNING_SECRET: ${VERIFICATION_SIGNING_SECRET:-dev-verification-hmac-secret-change-me-32chars}
     ports:
       - "${VERIFICATION_SERVICE_PORT:-8007}:8007"
@@ -300,6 +314,8 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${PAYMENT_SERVICE_PORT:-8008}:8008"
     depends_on:
@@ -330,6 +346,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_notification${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${NOTIFICATION_SERVICE_PORT:-8009}:8009"
     depends_on:
@@ -360,6 +378,8 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${ADMIN_SERVICE_PORT:-8010}:8010"
     depends_on:
@@ -389,6 +409,8 @@ services:
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${AUDIT_SERVICE_PORT:-8011}:8011"
     depends_on:
@@ -426,6 +448,8 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:8010
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
+      REDIS_URL: ${REDIS_URL:-}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     ports:
       - "${OBSERVABILITY_SERVICE_PORT:-8012}:8012"
     depends_on:

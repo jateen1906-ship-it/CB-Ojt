@@ -13,7 +13,10 @@ from app.clients.service_registry import build_service_registry
 from app.config import Settings, load_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
+from app.core.redis_client import GatewayRedisManager
+from app.middleware.auth_blacklist import TokenBlacklistMiddleware
 from app.middleware.correlation import CorrelationIDMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.routes.health import router as health_router
 from app.routes.proxy import build_proxy_router
 
@@ -29,14 +32,17 @@ def create_app(
 
     service_registry = build_service_registry(resolved_settings)
     http_client = GatewayHTTPClient(settings=resolved_settings, transport=http_transport)
+    redis_manager = GatewayRedisManager(settings=resolved_settings)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         logger.info("Starting CodeBridge API Gateway", extra={"event": "gateway_startup"})
         await http_client.startup()
+        await redis_manager.startup()
         try:
             yield
         finally:
+            await redis_manager.shutdown()
             await http_client.shutdown()
             logger.info("Stopped CodeBridge API Gateway", extra={"event": "gateway_shutdown"})
 
@@ -50,18 +56,21 @@ def create_app(
     application.state.settings = resolved_settings
     application.state.service_registry = service_registry
     application.state.http_client = http_client
+    application.state.redis_manager = redis_manager
 
     register_exception_handlers(application)
 
-    # CORSMiddleware added first so CorrelationIDMiddleware wraps it as outermost ASGI layer.
+    # Middlewares (ordered from inner to outer)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=resolved_settings.CORS_ORIGINS,
         allow_credentials=resolved_settings.CORS_ALLOW_CREDENTIALS,
         allow_methods=resolved_settings.CORS_ALLOW_METHODS,
         allow_headers=resolved_settings.CORS_ALLOW_HEADERS,
-        expose_headers=["X-Request-ID"],
+        expose_headers=["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     )
+    application.add_middleware(TokenBlacklistMiddleware, redis_manager=redis_manager)
+    application.add_middleware(RateLimitMiddleware, redis_manager=redis_manager)
     application.add_middleware(CorrelationIDMiddleware)
 
     application.include_router(health_router)

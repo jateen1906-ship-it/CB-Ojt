@@ -28,6 +28,7 @@ def get_settings(request: Request) -> Settings:
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
@@ -41,6 +42,10 @@ async def get_current_user(
         expected_type="access",
         settings=settings,
     )
+
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    if redis_mgr and await redis_mgr.is_blacklisted(claims.jti):
+        raise InvalidTokenError("Token has been revoked. Please log in again.")
 
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(claims.sub)

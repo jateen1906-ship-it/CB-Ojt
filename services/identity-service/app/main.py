@@ -14,6 +14,7 @@ from app.core.correlation import CorrelationIDMiddleware
 from app.core.database import build_async_engine, build_session_factory
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
+from app.core.redis_client import IdentityRedisManager
 from app.schemas.common import HealthResponse
 
 _OPENAPI_TAGS = [
@@ -48,13 +49,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     engine = build_async_engine(resolved_settings)
     session_factory = build_session_factory(engine)
+    redis_manager = IdentityRedisManager(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         logger.info("Starting CodeBridge Identity Service", extra={"event": "service_startup"})
+        await redis_manager.startup()
         try:
             yield
         finally:
+            await redis_manager.shutdown()
             await engine.dispose()
             logger.info("Stopped CodeBridge Identity Service", extra={"event": "service_shutdown"})
 
@@ -74,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = resolved_settings
     application.state.engine = engine
     application.state.session_factory = session_factory
+    application.state.redis_manager = redis_manager
 
     register_exception_handlers(application)
     application.add_middleware(CorrelationIDMiddleware)

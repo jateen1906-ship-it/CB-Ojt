@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = Field(default=10, ge=1, le=100)
     DATABASE_MAX_OVERFLOW: int = Field(default=20, ge=0, le=200)
 
+    # Redis Cache configuration
+    REDIS_URL: str | None = None
+    REDIS_ENABLED: bool = True
+    CACHE_DEFAULT_TTL_SECONDS: int = 300
+
     # Synchronous HTTP/REST Identity Service integration
     IDENTITY_SERVICE_URL: str = "http://localhost:8001"
     IDENTITY_SERVICE_TIMEOUT_SECONDS: float = Field(default=5.0, gt=0.0, le=60.0)

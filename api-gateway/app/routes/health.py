@@ -9,13 +9,19 @@ router = APIRouter(tags=["Health"])
 
 
 @router.get("/health", summary="API Gateway health check")
-async def health_check(request: Request) -> dict[str, str]:
-    """Check the health of the API Gateway process itself."""
+async def health_check(request: Request) -> dict:
+    """Check the health of the API Gateway process and connected services."""
     settings = request.app.state.settings
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    redis_status = "disabled"
+    if redis_mgr and redis_mgr.settings.REDIS_ENABLED:
+        redis_status = "connected" if redis_mgr.is_available else "disconnected"
+
     return {
         "status": "healthy",
         "service": "api-gateway",
         "version": settings.APP_VERSION,
+        "redis": redis_status,
     }
 
 
@@ -32,4 +38,3 @@ async def readiness_check(request: Request) -> JSONResponse:
         status_code=status.HTTP_200_OK if client_open else status.HTTP_503_SERVICE_UNAVAILABLE,
         content=payload,
     )
-

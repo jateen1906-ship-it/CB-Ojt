@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, ge=1, le=90)
     PASSWORD_HASHING_SCHEME: Literal["argon2"] = "argon2"
 
+    # Redis configuration
+    REDIS_URL: str | None = None
+    REDIS_ENABLED: bool = True
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def _parse_debug(cls, value: object) -> bool:

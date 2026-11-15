@@ -78,6 +78,14 @@ class Settings(BaseSettings):
     AUDIT_SERVICE_URL: str = "http://localhost:8011"
     OBSERVABILITY_SERVICE_URL: str = "http://localhost:8012"
 
+    # Redis & Distributed Caching / Rate Limiting
+    REDIS_URL: str | None = None
+    REDIS_ENABLED: bool = True
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_PER_MINUTE: int = 120
+    AUTH_RATE_LIMIT_PER_MINUTE: int = 20
+    JWT_SECRET_KEY: str = "dev-only-insecure-secret-key-change-before-production-32bytes"
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def _parse_debug_flag(cls, value: object) -> bool:

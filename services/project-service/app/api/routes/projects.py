@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -50,13 +50,21 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
     },
 )
 async def create_project(
+    request: Request,
     payload: ProjectCreateRequest,
     current_owner: AuthenticatedUser = Depends(require_owner),
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> ProjectResponse:
     service = ProjectService(session, settings)
-    return await service.create_project(owner=current_owner, payload=payload)
+    created = await service.create_project(owner=current_owner, payload=payload)
+
+    # Invalidate cached lists
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.delete_pattern("codebridge:projects:list:*")
+
+    return created
 
 
 @router.get(
@@ -77,6 +85,7 @@ async def create_project(
     },
 )
 async def list_projects(
+    request: Request,
     page: int = Query(1, ge=1, description="Page number (1-indexed)."),
     page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)."),
     search: str | None = Query(None, max_length=100, description="Search title & description."),
@@ -94,8 +103,16 @@ async def list_projects(
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> ProjectListResponse:
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    cache_key = f"codebridge:projects:list:{current_user.id}:{current_user.role}:{page}:{page_size}:{project_status}:{search}:{skill}"
+
+    if redis_mgr and redis_mgr.is_available:
+        cached = await redis_mgr.get_json(cache_key)
+        if cached is not None:
+            return ProjectListResponse.model_validate(cached)
+
     service = ProjectService(session, settings)
-    return await service.list_projects(
+    result = await service.list_projects(
         viewer=current_user,
         page=page,
         page_size=page_size,
@@ -107,6 +124,11 @@ async def list_projects(
         sort_by=sort_by,
         sort_order=sort_order,
     )
+
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.set_json(cache_key, result.model_dump(mode="json"), ttl_seconds=60)
+
+    return result
 
 
 @router.get(
@@ -126,13 +148,27 @@ async def list_projects(
     },
 )
 async def get_project(
+    request: Request,
     project_id: uuid.UUID,
     current_user: AuthenticatedUser = Depends(require_any_authenticated),
     session: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> ProjectResponse:
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    cache_key = f"codebridge:project:{project_id}"
+
+    if redis_mgr and redis_mgr.is_available:
+        cached = await redis_mgr.get_json(cache_key)
+        if cached is not None:
+            return ProjectResponse.model_validate(cached)
+
     service = ProjectService(session, settings)
-    return await service.get_project(project_id=project_id, viewer=current_user)
+    result = await service.get_project(project_id=project_id, viewer=current_user)
+
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.set_json(cache_key, result.model_dump(mode="json"), ttl_seconds=settings.CACHE_DEFAULT_TTL_SECONDS)
+
+    return result
 
 
 @router.patch(
