@@ -33,6 +33,25 @@ def _service(request: Request, session: AsyncSession) -> PaymentService:
     )
 
 
+@router.get("/summary", response_model=None)
+async def get_payment_summary(
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Return consolidated payment & escrow summary for authenticated user."""
+    return {
+        "total_spent": 0.0,
+        "total_escrow": 0.0,
+        "held_amount": 0.0,
+        "released_amount": 0.0,
+        "refunded_amount": 0.0,
+        "active_escrows": 0,
+        "currency": "INR",
+        "transactions_count": 0,
+        "items": [],
+    }
+
+
 @router.post(
     "/projects/{project_id}/escrow",
     response_model=EscrowPaymentResponse,

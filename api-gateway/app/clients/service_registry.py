@@ -142,7 +142,16 @@ def build_service_registry(settings: Settings) -> ServiceRegistry:
                 ("/verification", 100),
             ),
         ),
-        ("payment-service", settings.PAYMENT_SERVICE_URL, (("/payment", 100),)),
+        (
+            "payment-service",
+            settings.PAYMENT_SERVICE_URL,
+            (
+                ("/payments/summary", 10, "/payment/summary"),
+                ("/payment/summary", 10, "/payment/summary"),
+                ("/payments", 100, "/payment"),
+                ("/payment", 100),
+            ),
+        ),
         ("notification-service", settings.NOTIFICATION_SERVICE_URL, (("/notifications", 100),)),
         ("admin-service", settings.ADMIN_SERVICE_URL, (("/admin", 100),)),
         ("audit-service", settings.AUDIT_SERVICE_URL, (("/audit", 100),)),

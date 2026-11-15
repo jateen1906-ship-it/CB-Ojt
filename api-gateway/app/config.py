@@ -48,19 +48,13 @@ class Settings(BaseSettings):
 
     # CORS settings
     CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+        default_factory=lambda: ["*"]
     )
     CORS_ALLOW_METHODS: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+        default_factory=lambda: ["*"]
     )
     CORS_ALLOW_HEADERS: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: [
-            "Authorization",
-            "Content-Type",
-            "Idempotency-Key",
-            "X-Request-ID",
-            "Accept",
-        ]
+        default_factory=lambda: ["*"]
     )
     CORS_ALLOW_CREDENTIALS: bool = False
 
