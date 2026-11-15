@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import pytest
+from app.core.encryption import REVOKED_TOKEN_SENTINEL
+from app.models.github_connection import GitHubConnection, GitHubConnectionStatus
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.encryption import REVOKED_TOKEN_SENTINEL
-from app.models.github_connection import GitHubConnection, GitHubConnectionStatus
 from tests.conftest import (
     ASSIGNED_PROJECT_ID,
     OPEN_PROJECT_ID,

@@ -29,7 +29,7 @@ class TokenEncryptionService:
 
     @staticmethod
     def _build_aad(owner_id: uuid.UUID) -> bytes:
-        return f"codebridge:github-oauth-token:{uuid.UUID(str(owner_id))}".encode("utf-8")
+        return f"codebridge:github-oauth-token:{uuid.UUID(str(owner_id))}".encode()
 
     def encrypt(self, plaintext_token: str, *, owner_id: uuid.UUID) -> str:
         """Encrypt a plaintext OAuth access token using a fresh 96-bit nonce."""

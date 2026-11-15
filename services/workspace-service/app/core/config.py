@@ -130,7 +130,7 @@ class Settings(BaseSettings):
         return _validate_http_url(value, info.field_name)
 
     @model_validator(mode="after")
-    def _validate_cross_field_rules(self) -> "Settings":
+    def _validate_cross_field_rules(self) -> Settings:
         if self.WORKSPACE_DEFAULT_IMAGE not in self.allowed_image_set:
             raise ValueError("WORKSPACE_DEFAULT_IMAGE must be included in WORKSPACE_ALLOWED_IMAGES.")
         if self.WORKSPACE_MAX_ARCHIVE_BYTES > self.WORKSPACE_MAX_EXTRACT_BYTES:

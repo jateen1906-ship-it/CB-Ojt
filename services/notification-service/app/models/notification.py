@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -31,7 +31,7 @@ class Base(DeclarativeBase):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Notification(Base):
@@ -52,7 +52,7 @@ class Notification(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
-    email_logs: Mapped[list["EmailDeliveryLog"]] = relationship(
+    email_logs: Mapped[list[EmailDeliveryLog]] = relationship(
         back_populates="notification",
         cascade="all, delete-orphan",
     )

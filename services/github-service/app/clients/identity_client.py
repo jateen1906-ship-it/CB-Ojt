@@ -6,7 +6,8 @@ import uuid
 from typing import TYPE_CHECKING
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError as PydanticValidationError
+from pydantic import BaseModel, ConfigDict
+from pydantic import ValidationError as PydanticValidationError
 
 from app.core.exceptions import (
     ForbiddenError,

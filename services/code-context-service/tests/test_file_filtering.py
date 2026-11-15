@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.core.exceptions import BadRequestError
 from app.services.file_filter_service import FileFilterService, is_excluded_directory
 

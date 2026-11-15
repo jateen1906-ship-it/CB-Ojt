@@ -10,13 +10,12 @@ from pathlib import Path
 import httpx
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from app.clients.service_clients import IdentityAdminClient, PlatformInspectionClient
 from app.core.config import Settings
 from app.main import create_app
 from app.models import Base
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import create_async_engine
 
 OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 FREELANCER_ID = uuid.UUID("33333333-3333-4333-8333-333333333333")

@@ -7,6 +7,7 @@ from typing import Any
 
 from app.clients.github_client import GitHubContentNode
 from app.services.file_parser_service import FileParserService
+
 from tests.conftest import PROJECT_ID
 
 

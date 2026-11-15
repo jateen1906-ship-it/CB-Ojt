@@ -7,12 +7,12 @@ import uuid
 
 import httpx
 import pytest
+from app.models.assignment import Assignment, AssignmentStatus
+from app.models.project import Project, ProjectStatus
 from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.models.assignment import Assignment, AssignmentStatus
-from app.models.project import Project, ProjectStatus
 from tests.conftest import (
     ADMIN_TOKEN,
     FREELANCER_2_ID,

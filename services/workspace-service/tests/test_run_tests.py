@@ -6,10 +6,10 @@ import uuid
 from pathlib import Path
 
 import pytest
+from app.models.workspace import Workspace
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.models.workspace import Workspace
 from tests.conftest import (
     ASSIGNED_PROJECT_ID,
     TEST_FREELANCER_TOKEN,

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from sqlalchemy import select
-
 from app.main import create_app
 from app.models.base import utc_now
 from app.models.indexing_job import IndexingJob, IndexingJobStatus, IndexingJobType
 from app.models.repository_index import IndexStatus, RepositoryIndex
+from sqlalchemy import select
+
 from tests.conftest import (
     DISCONNECTED_PROJECT_ID,
     OWNER_ID,
@@ -18,7 +18,6 @@ from tests.conftest import (
     FakeGitHubRepoState,
     FakeRepoFile,
     auth_headers,
-    build_sample_repo_files,
     init_test_schema,
     make_github_service_transport,
     make_identity_transport,
@@ -88,17 +87,16 @@ async def test_max_files_limit_exceeded_returns_422(base_test_settings) -> None:
         project_transport=make_project_transport(),
         github_transport=make_github_service_transport(),
     )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            resp = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert resp.status_code == 422
-            assert resp.json()["error"]["code"] == "INDEX_LIMIT_EXCEEDED"
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        resp = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert resp.status_code == 422
+        assert resp.json()["error"]["code"] == "INDEX_LIMIT_EXCEEDED"
 
 
 @pytest.mark.asyncio

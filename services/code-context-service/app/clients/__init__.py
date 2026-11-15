@@ -8,7 +8,11 @@ from app.clients.github_client import (
     GitHubServiceClient,
 )
 from app.clients.identity_client import IdentityClient
-from app.clients.project_client import ProjectClient, ProjectSummary, assert_project_access
+from app.clients.project_client import (
+    ProjectClient,
+    ProjectSummary,
+    assert_project_access,
+)
 
 __all__ = [
     "ConnectedRepositoryInfo",

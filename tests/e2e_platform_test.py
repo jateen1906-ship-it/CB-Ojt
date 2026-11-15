@@ -15,7 +15,6 @@ import json
 import os
 import socket
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -26,7 +25,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import httpx
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
 from app.main import create_app
+
 from tests.conftest import (
     OWNER_TOKEN,
     PROJECT_ID,
@@ -99,24 +99,23 @@ async def test_zero_chunks_repository_query_returns_no_evidence_gracefully(
             {str(PROJECT_ID): FakeGitHubRepoState(files={"bin/data.png": FakeRepoFile(is_binary=True)})}
         ),
     )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            q = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/query",
-                json={"query": "Where is auth implemented?"},
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert q.status_code == 200
-            data = q.json()["data"]
-            assert data["retrieval_count"] == 0
-            assert data["sources"] == []
-            assert data["ai_generated"] is False
-            assert "No relevant code evidence" in data["answer"]
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        q = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/query",
+            json={"query": "Where is auth implemented?"},
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert q.status_code == 200
+        data = q.json()["data"]
+        assert data["retrieval_count"] == 0
+        assert data["sources"] == []
+        assert data["ai_generated"] is False
+        assert "No relevant code evidence" in data["answer"]
 

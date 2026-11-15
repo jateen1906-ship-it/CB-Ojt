@@ -7,7 +7,12 @@ from app.schemas.auth import (
     RegisterRequest,
     TokenPairResponse,
 )
-from app.schemas.common import ErrorDetail, ErrorResponse, HealthResponse, MessageResponse
+from app.schemas.common import (
+    ErrorDetail,
+    ErrorResponse,
+    HealthResponse,
+    MessageResponse,
+)
 from app.schemas.freelancer import (
     FreelancerListResponse,
     FreelancerProfileDetail,

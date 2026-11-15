@@ -9,15 +9,15 @@ from fastapi import APIRouter, FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.routes import assignments_router, projects_router
+from app.clients.identity_client import IdentityClient
 from app.core.config import Settings, load_settings
 from app.core.database import build_async_engine, build_session_factory
 from app.core.exceptions import register_exception_handlers
-from app.core.logging import configure_logging, get_logger
-from app.core.security import CorrelationIDMiddleware
-from app.clients.identity_client import IdentityClient
-from app.api.routes import assignments_router, projects_router
 from app.core.kafka_producer import ProjectKafkaProducer
+from app.core.logging import configure_logging, get_logger
 from app.core.redis_client import ProjectRedisManager
+from app.core.security import CorrelationIDMiddleware
 from app.schemas.common import HealthResponse
 
 _OPENAPI_TAGS = [

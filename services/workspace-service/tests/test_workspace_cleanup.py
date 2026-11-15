@@ -7,13 +7,13 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from app.models.base import utc_now
+from app.models.workspace import Workspace
+from app.services.docker_adapter import MockDockerAdapter
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import update
 
-from app.models.base import utc_now
-from app.models.workspace import Workspace
-from app.services.docker_adapter import MockDockerAdapter
 from tests.conftest import (
     ASSIGNED_PROJECT_ID,
     TEST_ADMIN_TOKEN,

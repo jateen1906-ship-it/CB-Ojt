@@ -1,6 +1,11 @@
 """Pydantic schema exports for GitHub Service."""
 
-from app.schemas.common import ErrorDetail, ErrorResponse, HealthResponse, ReadinessResponse
+from app.schemas.common import (
+    ErrorDetail,
+    ErrorResponse,
+    HealthResponse,
+    ReadinessResponse,
+)
 from app.schemas.oauth import GitHubConnectionDisconnectResponse, OAuthCallbackResponse
 from app.schemas.project_github import (
     BranchListResponse,

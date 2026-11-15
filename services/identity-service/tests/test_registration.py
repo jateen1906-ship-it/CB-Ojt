@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from app.models.freelancer_profile import FreelancerProfile
+from app.models.user import User, UserRole
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from app.models.freelancer_profile import FreelancerProfile
-from app.models.user import User, UserRole
 from tests.conftest import register_user
 
 

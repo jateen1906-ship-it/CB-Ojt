@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 import jwt
@@ -21,14 +21,14 @@ _DUMMY_PASSWORD_HASH: str | None = None
 
 def utc_now() -> datetime:
     """Return the current UTC timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def ensure_utc(dt: datetime) -> datetime:
     """Normalize naive or offset datetimes into UTC timezone-aware datetimes."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def hash_password(plain_password: str) -> str:
@@ -160,8 +160,8 @@ def decode_token(
     try:
         sub_uuid = uuid.UUID(str(raw_claims["sub"]))
         jti_uuid = uuid.UUID(str(raw_claims["jti"]))
-        iat_dt = datetime.fromtimestamp(int(raw_claims["iat"]), tz=timezone.utc)
-        exp_dt = datetime.fromtimestamp(int(raw_claims["exp"]), tz=timezone.utc)
+        iat_dt = datetime.fromtimestamp(int(raw_claims["iat"]), tz=UTC)
+        exp_dt = datetime.fromtimestamp(int(raw_claims["exp"]), tz=UTC)
     except (ValueError, TypeError) as exc:
         raise InvalidTokenError() from exc
 

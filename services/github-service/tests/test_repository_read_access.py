@@ -5,10 +5,10 @@ from __future__ import annotations
 import base64
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.main import create_app
 from app.models.base import Base
+from httpx import ASGITransport, AsyncClient
+
 from tests.conftest import (
     PROJECT_ID,
     TEST_ADMIN_TOKEN,

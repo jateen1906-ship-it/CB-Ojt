@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from app.models import VerifiedWorkRecord
 from httpx import AsyncClient
 from sqlalchemy import update
 
-from app.models import VerifiedWorkRecord
 from tests.conftest import (
     ADMIN_TOKEN,
     APPROVED_SUBMISSION_ID,

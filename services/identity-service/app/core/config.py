@@ -102,7 +102,7 @@ class Settings(BaseSettings):
         return SecretStr(secret)
 
     @model_validator(mode="after")
-    def _enforce_production_security(self) -> "Settings":
+    def _enforce_production_security(self) -> Settings:
         if self.APP_ENV in {"production", "staging"}:
             secret = self.JWT_SECRET_KEY.get_secret_value().lower()
             if any(marker in secret for marker in _INSECURE_SECRET_MARKERS):

@@ -8,13 +8,12 @@ from pathlib import Path
 import httpx
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from app.clients.service_clients import IdentityClient, ServiceProbeClient
 from app.core.config import Settings
 from app.main import create_app
 from app.models import Base
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 ADMIN_ID = uuid.UUID("55555555-5555-4555-8555-555555555555")

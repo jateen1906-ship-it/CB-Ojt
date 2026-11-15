@@ -6,8 +6,6 @@ import uuid
 
 import httpx
 import pytest
-from fastapi import FastAPI
-
 from app.clients.identity_client import IdentityClient
 from app.core.config import Settings
 from app.core.exceptions import (
@@ -18,6 +16,8 @@ from app.core.exceptions import (
     UnauthorizedError,
 )
 from app.core.security import UserRole
+from fastapi import FastAPI
+
 from tests.conftest import (
     FREELANCER_ID,
     INACTIVE_USER_TOKEN,

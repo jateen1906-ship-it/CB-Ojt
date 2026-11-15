@@ -11,17 +11,17 @@ from contextlib import contextmanager
 
 import httpx
 import pytest
-from fastapi import FastAPI
-from pydantic import ValidationError as PydanticValidationError
-from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
-
 from app.core.config import Settings
 from app.core.logging import JsonLogFormatter, RequestContextFilter
 from app.core.security import decode_token, hash_jti
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
+from fastapi import FastAPI
+from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+
 from tests.conftest import login_user, register_user
 
 

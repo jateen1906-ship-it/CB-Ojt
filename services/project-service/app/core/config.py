@@ -118,7 +118,7 @@ class Settings(BaseSettings):
         return cleaned
 
     @model_validator(mode="after")
-    def _enforce_environment_security(self) -> "Settings":
+    def _enforce_environment_security(self) -> Settings:
         if self.APP_ENV in {"production", "staging"}:
             if self.DATABASE_URL == _DEV_DEFAULT_DATABASE_URL or "change_me" in self.DATABASE_URL:
                 raise ValueError(

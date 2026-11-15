@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class CreateEscrowRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    amount: Decimal | None = Field(default=None, gt=Decimal(0))
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     fund_immediately: bool = False
     hold_immediately: bool = False

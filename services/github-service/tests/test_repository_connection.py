@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from app.models.project_repository import ProjectRepository, ProjectRepositoryStatus
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.project_repository import ProjectRepository, ProjectRepositoryStatus
 from tests.conftest import (
     MISSING_PROJECT_ID,
     OTHER_OWNER_PROJECT_ID,

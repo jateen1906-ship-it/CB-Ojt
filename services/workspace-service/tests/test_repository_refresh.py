@@ -6,10 +6,10 @@ import uuid
 from pathlib import Path
 
 import pytest
+from app.models.workspace import Workspace
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.models.workspace import Workspace
 from tests.conftest import (
     ASSIGNED_PROJECT_ID,
     TEST_FREELANCER_TOKEN,

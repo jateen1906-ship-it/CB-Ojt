@@ -8,9 +8,9 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from app.core.exceptions import UnsafeArchiveError
 from app.services.archive_service import ArchiveExtractor
+
 from tests.conftest import build_test_settings
 
 

@@ -1,6 +1,11 @@
 """Pydantic schema exports for Code Context Service."""
 
-from app.schemas.common import ErrorDetail, ErrorResponse, HealthResponse, ReadinessResponse
+from app.schemas.common import (
+    ErrorDetail,
+    ErrorResponse,
+    HealthResponse,
+    ReadinessResponse,
+)
 from app.schemas.indexing import (
     IndexingActionResponse,
     IndexingJobSummary,

@@ -5,8 +5,8 @@ from app.models.workspace import TERMINAL_WORKSPACE_STATUSES, Workspace, Workspa
 from app.models.workspace_event import WorkspaceEvent
 
 __all__ = [
-    "Base",
     "TERMINAL_WORKSPACE_STATUSES",
+    "Base",
     "Workspace",
     "WorkspaceEvent",
     "WorkspaceStatus",

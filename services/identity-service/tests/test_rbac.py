@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from fastapi import Depends, FastAPI
-
 from app.core.dependencies import require_owner
 from app.models.user import User, UserRole
+from fastapi import Depends, FastAPI
+
 from tests.conftest import login_user, provision_admin_account, register_user
 
 

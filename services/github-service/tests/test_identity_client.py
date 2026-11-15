@@ -6,7 +6,6 @@ import uuid
 
 import httpx
 import pytest
-
 from app.clients.identity_client import IdentityClient
 from app.core.exceptions import (
     ForbiddenError,
@@ -14,6 +13,7 @@ from app.core.exceptions import (
     UpstreamServiceUnavailableError,
 )
 from app.core.security import UserRole
+
 from tests.conftest import OWNER_ID, build_test_settings
 
 

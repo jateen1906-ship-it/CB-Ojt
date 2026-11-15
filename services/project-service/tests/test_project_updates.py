@@ -6,11 +6,11 @@ import uuid
 
 import httpx
 import pytest
+from app.models.project import Project
 from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.models.project import Project
 from tests.conftest import (
     ADMIN_TOKEN,
     FREELANCER_ID,

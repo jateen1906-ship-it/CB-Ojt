@@ -11,13 +11,12 @@ from typing import Any
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
-from sqlalchemy import text
-
 from app.core.config import Settings
 from app.core.database import build_async_engine
 from app.models.base import Base
 from app.services.rag_service import MockLLMHandler
+from fastapi import FastAPI
+from sqlalchemy import text
 
 OWNER_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 OTHER_OWNER_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")

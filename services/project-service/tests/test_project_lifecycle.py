@@ -7,13 +7,13 @@ from datetime import date, timedelta
 
 import httpx
 import pytest
-from fastapi import FastAPI
-from sqlalchemy import update
-
 from app.core.exceptions import InvalidProjectStatusError, ValidationError
 from app.models.project import Project, ProjectStatus
 from app.models.project_requirement import ProjectRequirement
 from app.services.project_state_service import ProjectStateService
+from fastapi import FastAPI
+from sqlalchemy import update
+
 from tests.conftest import (
     ADMIN_TOKEN,
     FREELANCER_ID,

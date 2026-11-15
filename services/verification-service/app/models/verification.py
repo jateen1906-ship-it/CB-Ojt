@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
@@ -13,7 +13,7 @@ from app.models.base import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class VerificationStatus(str, Enum):
@@ -72,7 +72,7 @@ class VerifiedWorkRecord(Base):
         onupdate=_utcnow,
     )
 
-    events: Mapped[list["VerificationEvent"]] = relationship(
+    events: Mapped[list[VerificationEvent]] = relationship(
         back_populates="record",
         cascade="all, delete-orphan",
         order_by="VerificationEvent.created_at.asc()",

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
 from app.main import create_app
 from app.services.rag_service import build_rag_user_prompt
 from app.services.vector_store_service import VectorSearchHit
+
 from tests.conftest import (
     OWNER_TOKEN,
     PROJECT_ID,
@@ -78,25 +78,24 @@ async def test_prompt_injection_in_code_comment_cannot_leak_secrets_or_system_pr
         github_transport=make_github_service_transport({str(PROJECT_ID): repo}),
         mock_llm_handler=tricked_llm,
     )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            resp = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/query",
-                json={"query": "How does auth_check work?"},
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert resp.status_code == 200
-            data = resp.json()["data"]
-            assert data["ai_generated"] is False
-            assert data["fallback_used"] is True
-            assert "secrets_dump.py" not in data["answer"]
-            assert "Bearer abcdef" not in data["answer"]
-            assert "app/evil.py" in data["answer"]
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        resp = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/query",
+            json={"query": "How does auth_check work?"},
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["ai_generated"] is False
+        assert data["fallback_used"] is True
+        assert "secrets_dump.py" not in data["answer"]
+        assert "Bearer abcdef" not in data["answer"]
+        assert "app/evil.py" in data["answer"]
 

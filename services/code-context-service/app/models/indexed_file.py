@@ -9,13 +9,15 @@ from datetime import datetime
 from sqlalchemy import (
     BigInteger,
     DateTime,
-    Enum as SAEnum,
     ForeignKey,
     Index,
     Integer,
     String,
     UniqueConstraint,
     Uuid,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

@@ -551,7 +551,7 @@ class WorkspaceService:
                     timeout=float(payload.timeout_seconds),
                 )
                 exit_code = int(proc.returncode or 0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 timed_out = True
                 proc.kill()
                 stdout_bytes, _ = await proc.communicate()

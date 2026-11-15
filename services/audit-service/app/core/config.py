@@ -97,7 +97,7 @@ class Settings(BaseSettings):
         return _validate_http_url(value, info.field_name)
 
     @model_validator(mode="after")
-    def _validate_prod(self) -> "Settings":
+    def _validate_prod(self) -> Settings:
         if self.APP_ENV in {"staging", "production"}:
             if self.DATABASE_URL == _DEV_DEFAULT_DATABASE_URL or "change_me" in self.DATABASE_URL:
                 raise ValueError("Production/staging require explicit DATABASE_URL.")

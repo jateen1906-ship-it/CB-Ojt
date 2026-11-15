@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -48,7 +48,7 @@ def _validate_budget_decimal(value: object) -> Decimal:
     else:
         raise ValueError("budget must be a valid decimal number.")
 
-    if not dec.is_finite() or dec <= Decimal("0"):
+    if not dec.is_finite() or dec <= Decimal(0):
         raise ValueError("budget must be greater than zero.")
     if dec > _MAX_BUDGET:
         raise ValueError("budget exceeds maximum supported precision NUMERIC(12,2).")
@@ -68,7 +68,7 @@ def _validate_currency_code(value: str) -> str:
 
 
 def _validate_future_or_today_deadline(value: date) -> date:
-    today_utc = datetime.now(timezone.utc).date()
+    today_utc = datetime.now(UTC).date()
     if value < today_utc:
         raise ValueError("deadline cannot be in the past.")
     return value
@@ -199,7 +199,7 @@ class ProjectUpdateRequest(BaseModel):
         return normalize_skill_list(value) if value is not None else None
 
     @model_validator(mode="after")
-    def _ensure_non_empty_valid_patch(self) -> "ProjectUpdateRequest":
+    def _ensure_non_empty_valid_patch(self) -> ProjectUpdateRequest:
         if not self.model_fields_set:
             raise ValueError("At least one updatable field must be provided.")
         for field_name in self.model_fields_set:

@@ -6,7 +6,6 @@ import math
 
 import httpx
 import pytest
-
 from app.core.exceptions import UpstreamServiceUnavailableError
 from app.core.logging import MetricsRegistry
 from app.services.embedding_service import DeterministicMockEmbeddings, EmbeddingService

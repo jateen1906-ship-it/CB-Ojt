@@ -7,8 +7,6 @@ import json
 import logging
 
 import pytest
-from httpx import AsyncClient
-
 from app.core.config import Settings, decode_aes256_key
 from app.core.encryption import (
     REVOKED_TOKEN_SENTINEL,
@@ -16,6 +14,8 @@ from app.core.encryption import (
     TokenEncryptionService,
 )
 from app.core.logging import JsonLogFormatter
+from httpx import AsyncClient
+
 from tests.conftest import (
     ALTERNATE_ENCRYPTION_KEY,
     OTHER_OWNER_ID,

@@ -38,7 +38,10 @@ from app.schemas.indexing import (
 )
 from app.services.chunking_service import ChunkDraft, ChunkingService
 from app.services.embedding_service import EmbeddingService
-from app.services.repository_ingestion_service import IngestionResult, RepositoryIngestionService
+from app.services.repository_ingestion_service import (
+    IngestionResult,
+    RepositoryIngestionService,
+)
 from app.services.vector_store_service import VectorStoreService
 
 if TYPE_CHECKING:

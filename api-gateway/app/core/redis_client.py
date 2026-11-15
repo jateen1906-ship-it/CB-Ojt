@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import redis.asyncio as aioredis
 from redis.exceptions import RedisError
@@ -82,7 +82,7 @@ class GatewayRedisManager:
         identifier: str,
         limit: int,
         window_seconds: int = 60,
-    ) -> Tuple[bool, int, int]:
+    ) -> tuple[bool, int, int]:
         """Sliding-window distributed rate limiter using atomic Redis pipeline.
 
         Returns (is_limited, current_count, reset_seconds).

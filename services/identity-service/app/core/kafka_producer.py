@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from aiokafka import AIOKafkaProducer
@@ -67,7 +67,7 @@ class IdentityKafkaProducer:
             "event_type": event_type,
             "aggregate_id": str(user_id),
             "source": "identity-service",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "payload": payload,
         }
 

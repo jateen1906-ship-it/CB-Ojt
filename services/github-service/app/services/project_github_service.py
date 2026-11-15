@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.project_client import ProjectClient, ProjectSummary
 from app.core.config import Settings
 from app.core.dependencies import AuthContext
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.core.logging import get_logger
 from app.core.security import UserRole, normalize_repo_path, validate_git_ref
 from app.models.base import utc_now

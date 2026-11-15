@@ -6,8 +6,8 @@ import uuid
 
 import httpx
 import pytest
-
 from app.main import create_app
+
 from tests.conftest import (
     INACTIVE_TOKEN,
     OWNER_TOKEN,
@@ -82,15 +82,14 @@ async def test_identity_service_unavailable_returns_503(base_test_settings) -> N
         project_transport=make_project_transport(),
         github_transport=make_github_service_transport(),
     )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            resp = await client.get(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index/status",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert resp.status_code == 503
-            assert resp.json()["error"]["code"] == "IDENTITY_SERVICE_UNAVAILABLE"
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        resp = await client.get(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index/status",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert resp.status_code == 503
+        assert resp.json()["error"]["code"] == "IDENTITY_SERVICE_UNAVAILABLE"
 

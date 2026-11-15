@@ -13,13 +13,12 @@ from typing import Any
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
-
 from app.core.config import Settings
 from app.main import create_app
 from app.models.base import Base
 from app.services.docker_adapter import MockDockerAdapter
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 OTHER_OWNER_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")

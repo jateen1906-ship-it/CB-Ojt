@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
 from app.clients.service_clients import (
     GitHubMetadataClient,
     IdentityClient,
@@ -23,6 +21,7 @@ from app.clients.service_clients import (
 from app.core.config import Settings
 from app.main import create_app
 from app.models import Base
+from httpx import ASGITransport, AsyncClient
 
 OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 OTHER_OWNER_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")
@@ -55,7 +54,7 @@ class MockReviewState:
                 "title": "Approved Fix v2",
                 "status": "APPROVED",
                 "commit_sha": "deadbeef1234",
-                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "reviewed_at": datetime.now(UTC).isoformat(),
             },
             UNAPPROVED_SUBMISSION_ID: {
                 "id": str(UNAPPROVED_SUBMISSION_ID),

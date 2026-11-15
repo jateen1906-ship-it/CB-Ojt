@@ -172,7 +172,7 @@ async def logout_user(
                 token_str = auth_header[7:].strip()
                 claims = decode_token(token=token_str, expected_type="access", settings=settings)
                 await redis_mgr.blacklist_token(str(claims.jti), ttl_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
-            except Exception as exc:
+            except Exception:
                 pass
 
     return MessageResponse(message="Logged out successfully.")

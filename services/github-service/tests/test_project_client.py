@@ -6,7 +6,6 @@ import uuid
 
 import httpx
 import pytest
-
 from app.clients.project_client import ProjectClient
 from app.core.exceptions import (
     ForbiddenError,
@@ -14,6 +13,7 @@ from app.core.exceptions import (
     UnauthorizedError,
     UpstreamServiceUnavailableError,
 )
+
 from tests.conftest import OWNER_ID, PROJECT_ID, build_test_settings
 
 

@@ -6,10 +6,10 @@ import uuid
 
 import httpx
 import pytest
+from app.models.user import User
 from fastapi import FastAPI
 from sqlalchemy import update
 
-from app.models.user import User
 from tests.conftest import login_user, register_user
 
 

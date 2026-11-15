@@ -13,13 +13,12 @@ from typing import Any
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
-from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 from app.core.config import Settings
 from app.main import create_app
 from app.models.base import Base
+from fastapi import FastAPI
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 OWNER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 OWNER_2_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")

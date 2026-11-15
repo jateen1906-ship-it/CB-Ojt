@@ -7,13 +7,13 @@ from typing import Any
 
 from fastapi import Request
 from sqlalchemy import event
-from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings
 

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-
-from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect, status
 from urllib.parse import urlencode
+
 import websockets
+from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect, status
 
 from app.clients.http_client import GatewayHTTPClient
 from app.clients.service_registry import RouteRule, ServiceRegistry

@@ -6,7 +6,7 @@ import contextvars
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 request_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
@@ -24,7 +24,7 @@ def _scrub_text(value: str) -> str:
 class JsonLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "service": "verification-service",

@@ -151,7 +151,7 @@ class Settings(BaseSettings):
         return _validate_http_url(value, info.field_name)
 
     @model_validator(mode="after")
-    def _validate_cross_field_rules(self) -> "Settings":
+    def _validate_cross_field_rules(self) -> Settings:
         if self.CORS_ALLOW_CREDENTIALS and "*" in self.CORS_ORIGINS:
             raise ValueError(
                 "CORS_ALLOW_CREDENTIALS cannot be enabled when wildcard '*' is in CORS_ORIGINS."

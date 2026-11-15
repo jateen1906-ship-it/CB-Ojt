@@ -8,12 +8,12 @@ from datetime import timedelta
 import httpx
 import jwt
 import pytest
-from fastapi import FastAPI
-from sqlalchemy import select
-
 from app.core.config import Settings
 from app.core.security import utc_now
 from app.models.refresh_token import RefreshToken
+from fastapi import FastAPI
+from sqlalchemy import select
+
 from tests.conftest import login_user, register_user
 
 

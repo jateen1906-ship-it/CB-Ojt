@@ -181,7 +181,7 @@ class Settings(BaseSettings):
         return cleaned or None
 
     @model_validator(mode="after")
-    def _validate_cross_field_rules(self) -> "Settings":
+    def _validate_cross_field_rules(self) -> Settings:
         if self.CHUNK_OVERLAP >= self.CHUNK_SIZE:
             raise ValueError("CHUNK_OVERLAP must be strictly smaller than CHUNK_SIZE.")
         if self.TOP_K_DEFAULT > self.TOP_K_MAX:

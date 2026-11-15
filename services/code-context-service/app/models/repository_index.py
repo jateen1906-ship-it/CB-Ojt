@@ -10,7 +10,6 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
-    Enum as SAEnum,
     Index,
     Integer,
     String,
@@ -18,6 +17,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

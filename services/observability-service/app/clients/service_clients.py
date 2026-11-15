@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Mapping
 import time
 import uuid
+from collections.abc import Mapping
 
 import httpx
 

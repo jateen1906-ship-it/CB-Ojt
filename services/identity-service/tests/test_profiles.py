@@ -6,10 +6,10 @@ import uuid
 
 import httpx
 import pytest
+from app.models.user import User, UserRole
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from app.models.user import User, UserRole
 from tests.conftest import login_user, register_user
 
 

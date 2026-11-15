@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from app.models.refresh_token import RefreshToken
+from app.models.user import User
 from fastapi import FastAPI
 from sqlalchemy import select, update
 
-from app.models.refresh_token import RefreshToken
-from app.models.user import User
 from tests.conftest import login_user, register_user
 
 

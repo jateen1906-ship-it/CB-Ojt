@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.exceptions import (
     InvalidProjectStatusError,
@@ -55,7 +55,7 @@ class ProjectStateService:
             raise ValidationError("Project description must be complete before publishing.")
         if project.budget is None or project.budget <= 0:
             raise ValidationError("Project budget must be positive before publishing.")
-        if project.deadline < datetime.now(timezone.utc).date():
+        if project.deadline < datetime.now(UTC).date():
             raise ValidationError("Cannot publish a project with a past deadline.")
 
         req = project.requirement

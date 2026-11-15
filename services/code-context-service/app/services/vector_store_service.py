@@ -59,7 +59,7 @@ def build_collection_name(prefix: str, project_id: uuid.UUID, index_version: int
 
 def build_vector_id(repository_index_id: uuid.UUID, chunk_identifier: str) -> str:
     """Deterministic vector ID unique within a versioned Chroma collection."""
-    raw = f"{repository_index_id.hex}:{chunk_identifier}".encode("utf-8")
+    raw = f"{repository_index_id.hex}:{chunk_identifier}".encode()
     return hashlib.sha256(raw).hexdigest()[:40]
 
 

@@ -6,8 +6,8 @@ import json
 
 import httpx
 import pytest
-
 from app.main import create_app
+
 from tests.conftest import (
     OWNER_TOKEN,
     PROJECT_ID,
@@ -124,21 +124,20 @@ async def test_insights_openai_filters_hallucinated_paths_and_fallback_works(
         github_transport=make_github_service_transport(),
         llm_transport=httpx.MockTransport(openai_handler),
     )
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            gen = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/insights/generate",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert gen.status_code == 201
-            ai = gen.json()["data"]["ai_summary"]
-            assert ai["likely_entry_points"] == ["app/main.py"]
-            assert ai["evidence_files"] == ["app/payments/webhook.py"]
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        gen = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/insights/generate",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert gen.status_code == 201
+        ai = gen.json()["data"]["ai_summary"]
+        assert ai["likely_entry_points"] == ["app/main.py"]
+        assert ai["evidence_files"] == ["app/payments/webhook.py"]
 

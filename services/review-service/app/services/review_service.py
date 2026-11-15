@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.project_client import ProjectClient, ProjectSummary
 from app.clients.workspace_client import TelemetryRelayClient, WorkspaceClient
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.core.security import AuthenticatedUser
 from app.models import (
     Review,
@@ -27,7 +32,6 @@ from app.schemas.review import (
     ProjectReviewSummaryResponse,
     ReviewCommentResponse,
     ReviewDecisionRequest,
-    ReviewResponse,
     SubmissionCreateRequest,
     SubmissionListResponse,
     SubmissionResponse,
@@ -37,7 +41,7 @@ ELIGIBLE_SUBMISSION_PROJECT_STATUSES = {"ASSIGNED", "IN_PROGRESS", "CHANGES_REQU
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ReviewService:

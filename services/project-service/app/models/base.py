@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
@@ -10,7 +10,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 def utc_now() -> datetime:
     """Return the current UTC timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Base(AsyncAttrs, DeclarativeBase):

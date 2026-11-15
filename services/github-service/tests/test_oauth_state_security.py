@@ -7,13 +7,13 @@ from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from app.core.security import hash_oauth_state
+from app.models.base import utc_now
+from app.models.oauth_state import OAuthState
 from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_oauth_state
-from app.models.base import utc_now
-from app.models.oauth_state import OAuthState
 from tests.conftest import (
     PROJECT_ID,
     TEST_OTHER_OWNER_TOKEN,

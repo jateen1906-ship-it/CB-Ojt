@@ -22,7 +22,10 @@ from app.models.base import utc_now
 from app.repositories.github_connection_repository import GitHubConnectionRepository
 from app.repositories.project_repository_repository import ProjectRepositoryRepository
 from app.schemas.project_github import ProjectRepositoryMetadata
-from app.schemas.repository import ConnectRepositoryRequest, GitHubRepositoryListResponse
+from app.schemas.repository import (
+    ConnectRepositoryRequest,
+    GitHubRepositoryListResponse,
+)
 from app.services.github_api_service import GitHubAPIService
 
 logger = get_logger("services.repository")

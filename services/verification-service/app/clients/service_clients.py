@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -200,7 +200,7 @@ class ReviewClient:
         reviewed_at = (
             datetime.fromisoformat(str(reviewed_raw).replace("Z", "+00:00"))
             if reviewed_raw
-            else datetime.now(timezone.utc)
+            else datetime.now(UTC)
         )
         return ApprovedSubmissionInfo(
             id=uuid.UUID(str(data["id"])),

@@ -8,13 +8,12 @@ from pathlib import Path
 import httpx
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-
 from app.clients.identity_client import IdentityClient
 from app.core.config import Settings
 from app.main import create_app
 from app.models import Base, EmailDeliveryLog
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 USER_1_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 USER_2_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")

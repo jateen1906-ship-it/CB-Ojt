@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
 from app.clients.github_client import GitHubServiceClient
 from app.core.exceptions import (
     BadRequestError,
@@ -12,6 +11,7 @@ from app.core.exceptions import (
     UpstreamRateLimitError,
     UpstreamServiceUnavailableError,
 )
+
 from tests.conftest import (
     DISCONNECTED_PROJECT_ID,
     OWNER_TOKEN,

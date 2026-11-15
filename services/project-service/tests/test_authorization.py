@@ -7,12 +7,12 @@ import uuid
 
 import httpx
 import pytest
+from app.core.config import Settings
+from app.services.project_service import ProjectService
 from fastapi import FastAPI
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.config import Settings
-from app.services.project_service import ProjectService
 from tests.conftest import (
     INACTIVE_USER_TOKEN,
     INVALID_TOKEN,

@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
+from app.models.assignment import Assignment, AssignmentStatus
+from app.models.project import Project, ProjectStatus
 from fastapi import FastAPI
 from sqlalchemy import update
 
-from app.models.assignment import Assignment, AssignmentStatus
-from app.models.project import Project, ProjectStatus
 from tests.conftest import (
     ADMIN_TOKEN,
     FREELANCER_2_ID,
@@ -74,7 +74,7 @@ async def test_list_projects_enforces_strict_role_visibility(
                 freelancer_id=FREELANCER_ID,
                 assigned_by=OWNER_ID,
                 status=AssignmentStatus.CANCELLED,
-                cancelled_at=datetime.now(timezone.utc),
+                cancelled_at=datetime.now(UTC),
             )
         )
         await session.commit()
@@ -132,7 +132,7 @@ async def test_list_projects_pagination_and_sorting(
         created.append(proj)
 
     # Stagger created_at timestamps deterministically
-    base_ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    base_ts = datetime(2026, 1, 1, tzinfo=UTC)
     async with project_app.state.session_factory() as session:
         for idx, proj in enumerate(created):
             await session.execute(

@@ -6,7 +6,7 @@ import json
 import posixpath
 import uuid
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +18,11 @@ from app.core.logging import MetricsRegistry, get_logger
 from app.models.base import utc_now
 from app.models.indexed_file import IndexedFile, IndexedFileStatus
 from app.models.repository_index import IndexStatus, RepositoryIndex
+from app.models.repository_insight import RepositoryInsight
 from app.repositories.chunk_repository import CodeChunkRepository
 from app.repositories.file_repository import IndexedFileRepository
 from app.repositories.index_repository import RepositoryIndexRepository
 from app.repositories.insight_repository import RepositoryInsightRepository
-from app.models.repository_insight import RepositoryInsight
 from app.schemas.insights import (
     AIInsightSummary,
     DeterministicInsightsReport,
@@ -200,10 +200,10 @@ class InsightService:
 
         large_files.sort(key=lambda item: int(item["size_bytes"]), reverse=True)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         completed_at = active_index.completed_at
         if completed_at is not None and completed_at.tzinfo is None:
-            completed_at = completed_at.replace(tzinfo=timezone.utc)
+            completed_at = completed_at.replace(tzinfo=UTC)
         is_stale = (
             active_index.status != IndexStatus.READY
             or (latest_index is not None and latest_index.id != active_index.id)

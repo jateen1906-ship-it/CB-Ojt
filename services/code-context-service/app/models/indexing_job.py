@@ -8,7 +8,6 @@ from datetime import datetime
 
 from sqlalchemy import (
     DateTime,
-    Enum as SAEnum,
     ForeignKey,
     Index,
     Integer,
@@ -16,6 +15,9 @@ from sqlalchemy import (
     Text,
     Uuid,
     text,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

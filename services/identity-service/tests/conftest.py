@@ -9,16 +9,15 @@ from typing import Any
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
-from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 from app.core.config import Settings
 from app.main import create_app
 from app.models.base import Base
 from app.models.user import User, UserRole
 from app.schemas.user import AdminUserCreateRequest
 from app.services.user_service import UserService
+from fastapi import FastAPI
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 TEST_JWT_SECRET = "test-suite-super-strong-jwt-signing-secret-key-64-bytes-minimum!!"
 

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from tests.test_notifications import INTERNAL_KEY, USER_1_ID, USER_1_TOKEN, USER_2_TOKEN, app, client
+from tests.test_notifications import INTERNAL_KEY, USER_1_ID, USER_1_TOKEN, USER_2_TOKEN
 
 
 @pytest.mark.asyncio

@@ -179,7 +179,7 @@ class Settings(BaseSettings):
         return value.strip()
 
     @model_validator(mode="after")
-    def _enforce_environment_security(self) -> "Settings":
+    def _enforce_environment_security(self) -> Settings:
         if self.APP_ENV != "test" and (
             self.GITHUB_TEST_API_BASE_URL is not None or self.GITHUB_TEST_OAUTH_TOKEN_URL is not None
         ):

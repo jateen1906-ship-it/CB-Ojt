@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from sqlalchemy import (
@@ -21,7 +21,7 @@ from app.models.base import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class SubmissionStatus(str, Enum):
@@ -84,22 +84,22 @@ class Submission(Base):
         onupdate=_utcnow,
     )
 
-    files: Mapped[list["SubmissionFile"]] = relationship(
+    files: Mapped[list[SubmissionFile]] = relationship(
         back_populates="submission",
         cascade="all, delete-orphan",
         order_by="SubmissionFile.file_path.asc()",
     )
-    reviews: Mapped[list["Review"]] = relationship(
+    reviews: Mapped[list[Review]] = relationship(
         back_populates="submission",
         cascade="all, delete-orphan",
         order_by="Review.created_at.asc()",
     )
-    comments: Mapped[list["ReviewComment"]] = relationship(
+    comments: Mapped[list[ReviewComment]] = relationship(
         back_populates="submission",
         cascade="all, delete-orphan",
         order_by="ReviewComment.created_at.asc()",
     )
-    events: Mapped[list["ReviewEvent"]] = relationship(
+    events: Mapped[list[ReviewEvent]] = relationship(
         back_populates="submission",
         cascade="all, delete-orphan",
         order_by="ReviewEvent.created_at.asc()",
@@ -129,5 +129,5 @@ class SubmissionFile(Base):
     submission: Mapped[Submission] = relationship(back_populates="files")
 
 
-from app.models.review import Review, ReviewComment, ReviewEvent  # noqa: E402,F401
+from app.models.review import Review, ReviewComment, ReviewEvent
 

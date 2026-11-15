@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from sqlalchemy import select
-
 from app.main import create_app
 from app.models.repository_index import IndexStatus, RepositoryIndex
+from sqlalchemy import select
+
 from tests.conftest import (
     OWNER_TOKEN,
     PROJECT_ID,
@@ -116,32 +116,31 @@ async def test_failed_reindex_preserves_previous_active_index(base_test_settings
         github_transport=make_github_service_transport({str(PROJECT_ID): repo_state}),
     )
 
-    async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://code-context.test",
-        ) as client:
-            r1 = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/index",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert r1.status_code == 201
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://code-context.test",
+    ) as client:
+        r1 = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/index",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert r1.status_code == 201
 
-            # Trigger transient rate limit during reindex v2
-            repo_state.rate_limit_contents = True
-            r2 = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/reindex",
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert r2.status_code == 429
+        # Trigger transient rate limit during reindex v2
+        repo_state.rate_limit_contents = True
+        r2 = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/reindex",
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert r2.status_code == 429
 
-            # v1 MUST remain active and queryable!
-            q_resp = await client.post(
-                f"/api/v1/code-context/projects/{PROJECT_ID}/query",
-                json={"query": "handle_payment_callback"},
-                headers=auth_headers(OWNER_TOKEN),
-            )
-            assert q_resp.status_code == 200
-            assert q_resp.json()["data"]["index_version"] == 1
-            assert q_resp.json()["data"]["retrieval_count"] >= 1
+        # v1 MUST remain active and queryable!
+        q_resp = await client.post(
+            f"/api/v1/code-context/projects/{PROJECT_ID}/query",
+            json={"query": "handle_payment_callback"},
+            headers=auth_headers(OWNER_TOKEN),
+        )
+        assert q_resp.status_code == 200
+        assert q_resp.json()["data"]["index_version"] == 1
+        assert q_resp.json()["data"]["retrieval_count"] >= 1
 

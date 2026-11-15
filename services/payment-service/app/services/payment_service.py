@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.service_clients import ProjectClient, ReviewClient, TelemetryRelayClient
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from app.clients.service_clients import (
+    ProjectClient,
+    ReviewClient,
+    TelemetryRelayClient,
+)
+from app.core.exceptions import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.core.security import AuthenticatedUser, hash_request_payload
 from app.models import (
     EscrowPayment,
@@ -32,7 +41,7 @@ from app.schemas.payment import (
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PaymentService:

@@ -5,15 +5,15 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.encryption import TokenEncryptionService
 from app.main import create_app
 from app.models.base import Base
 from app.models.github_connection import GitHubConnection, GitHubConnectionStatus
 from app.models.oauth_state import OAuthState
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from tests.conftest import (
     OWNER_ID,
     PROJECT_ID,
@@ -181,27 +181,26 @@ async def test_callback_handles_oauth_denial_upstream_error_and_optional_redirec
     )
     async with app.state.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    async with app.router.lifespan_context(app):
-        async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://testserver",
-        ) as rc:
-            a_resp = await rc.get(
-                "/api/v1/github/oauth/authorize",
-                params={"project_id": str(PROJECT_ID)},
-                headers=auth_headers(TEST_OWNER_TOKEN),
-                follow_redirects=False,
-            )
-            st = _extract_state(a_resp.headers["location"])
-            cb_redir = await rc.get(
-                "/api/v1/github/oauth/callback",
-                params={"code": "valid-code", "state": st},
-                follow_redirects=False,
-            )
-            assert cb_redir.status_code == 302
-            loc = cb_redir.headers["location"]
-            assert loc.startswith("http://localhost:3000/github/connected?")
-            assert "gho_super_secret" not in loc
-            assert "code=" not in loc
-            assert "state=" not in loc
-            assert "status=connected" in loc
+    async with app.router.lifespan_context(app), AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as rc:
+        a_resp = await rc.get(
+            "/api/v1/github/oauth/authorize",
+            params={"project_id": str(PROJECT_ID)},
+            headers=auth_headers(TEST_OWNER_TOKEN),
+            follow_redirects=False,
+        )
+        st = _extract_state(a_resp.headers["location"])
+        cb_redir = await rc.get(
+            "/api/v1/github/oauth/callback",
+            params={"code": "valid-code", "state": st},
+            follow_redirects=False,
+        )
+        assert cb_redir.status_code == 302
+        loc = cb_redir.headers["location"]
+        assert loc.startswith("http://localhost:3000/github/connected?")
+        assert "gho_super_secret" not in loc
+        assert "code=" not in loc
+        assert "state=" not in loc
+        assert "status=connected" in loc

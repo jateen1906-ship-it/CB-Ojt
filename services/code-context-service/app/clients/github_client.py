@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError as PydanticValidationError
+from pydantic import BaseModel, ConfigDict
+from pydantic import ValidationError as PydanticValidationError
 
 from app.core.exceptions import (
     BadRequestError,

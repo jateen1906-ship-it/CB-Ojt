@@ -118,7 +118,7 @@ class Settings(BaseSettings):
         return _validate_http_url(value, info.field_name)
 
     @model_validator(mode="after")
-    def _validate_production_rules(self) -> "Settings":
+    def _validate_production_rules(self) -> Settings:
         if len(self.VERIFICATION_SIGNING_SECRET) < 16:
             raise ValueError("VERIFICATION_SIGNING_SECRET must be at least 16 characters.")
         if self.APP_ENV in {"staging", "production"}:

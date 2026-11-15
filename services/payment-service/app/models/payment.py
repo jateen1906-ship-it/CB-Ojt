@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
 
@@ -23,7 +23,7 @@ from app.models.base import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EscrowStatus(str, Enum):
@@ -80,12 +80,12 @@ class EscrowPayment(Base):
         onupdate=_utcnow,
     )
 
-    transactions: Mapped[list["EscrowTransaction"]] = relationship(
+    transactions: Mapped[list[EscrowTransaction]] = relationship(
         back_populates="escrow",
         cascade="all, delete-orphan",
         order_by="EscrowTransaction.created_at.asc()",
     )
-    events: Mapped[list["PaymentEvent"]] = relationship(
+    events: Mapped[list[PaymentEvent]] = relationship(
         back_populates="escrow",
         cascade="all, delete-orphan",
         order_by="PaymentEvent.created_at.asc()",

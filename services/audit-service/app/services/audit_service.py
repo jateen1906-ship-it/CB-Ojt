@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,11 +14,15 @@ from app.core.dependencies import AuthenticatedUser
 from app.core.exceptions import ForbiddenError
 from app.core.logging import scrub_metadata
 from app.models import AuditLog
-from app.schemas.audit import AuditEventCreateRequest, AuditLogListResponse, AuditLogResponse
+from app.schemas.audit import (
+    AuditEventCreateRequest,
+    AuditLogListResponse,
+    AuditLogResponse,
+)
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _to_response(entry: AuditLog) -> AuditLogResponse:

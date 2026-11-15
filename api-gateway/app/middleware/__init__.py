@@ -1,5 +1,9 @@
 """API Gateway middleware package."""
 
-from app.middleware.correlation import CorrelationIDMiddleware, REQUEST_ID_HEADER, get_request_id
+from app.middleware.correlation import (
+    REQUEST_ID_HEADER,
+    CorrelationIDMiddleware,
+    get_request_id,
+)
 
-__all__ = ["CorrelationIDMiddleware", "REQUEST_ID_HEADER", "get_request_id"]
+__all__ = ["REQUEST_ID_HEADER", "CorrelationIDMiddleware", "get_request_id"]

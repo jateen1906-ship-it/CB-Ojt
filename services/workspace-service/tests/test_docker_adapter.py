@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from app.services.docker_adapter import MockDockerAdapter
 from httpx import AsyncClient
 
-from app.services.docker_adapter import MockDockerAdapter
 from tests.conftest import (
     ASSIGNED_PROJECT_ID,
     TEST_FREELANCER_TOKEN,

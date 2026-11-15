@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from pydantic import ValidationError
-
 from app.clients.http_client import GatewayHTTPClient
 from app.clients.service_registry import RouteRule, ServiceRegistry
 from app.config import Settings
 from app.core.exceptions import ServiceConfigurationError
 from app.main import create_app
+from pydantic import ValidationError
 
 
 @pytest.mark.asyncio
