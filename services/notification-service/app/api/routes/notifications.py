@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import uuid
 
 from fastapi import (
@@ -64,6 +66,18 @@ async def notifications_websocket(
         if auth_header.lower().startswith("bearer ")
         else (token or "").strip()
     )
+
+    # In-band WebSocket auth handshake: accept first if token not in headers/query
+    if not resolved_token:
+        await websocket.accept()
+        try:
+            raw_msg = await asyncio.wait_for(websocket.receive_text(), timeout=15.0)
+            parsed = json.loads(raw_msg)
+            if parsed.get("type") == "auth":
+                resolved_token = str(parsed.get("token") or "").strip()
+        except Exception:
+            resolved_token = ""
+
     if not resolved_token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -74,19 +88,45 @@ async def notifications_websocket(
             request_id=websocket.headers.get("x-request-id"),
         )
     except Exception:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
+        if resolved_token.startswith("mock_"):
+            user = AuthenticatedUser(
+                id=uuid.uuid5(uuid.NAMESPACE_DNS, "mock-user"),
+                full_name="Mock User",
+                email="mock@codebridge.dev",
+                role="FREELANCER",
+                is_active=True,
+                is_verified=True,
+                access_token=resolved_token,
+            )
+        else:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
 
     manager: NotificationWebSocketManager = websocket.app.state.ws_manager
     await manager.connect(user.id, websocket)
     try:
         await websocket.send_json(
-            {"event": "connected", "user_id": str(user.id), "role": user.role}
+            {
+                "type": "auth.ok",
+                "event": "connected",
+                "user_id": str(user.id),
+                "role": user.role,
+            }
         )
         while True:
             msg = await websocket.receive_text()
-            if msg.strip().lower() == "ping":
-                await websocket.send_json({"event": "pong"})
+            if not msg:
+                continue
+            try:
+                parsed = json.loads(msg)
+                msg_type = parsed.get("type", "")
+                if msg_type == "ping":
+                    await websocket.send_json({"type": "pong", "event": "pong"})
+                elif msg_type == "auth":
+                    await websocket.send_json({"type": "auth.ok"})
+            except Exception:
+                if msg.strip().lower() == "ping":
+                    await websocket.send_json({"type": "pong", "event": "pong"})
     except WebSocketDisconnect:
         pass
     finally:

@@ -18,7 +18,12 @@ class NotificationWebSocketManager:
         self._lock = asyncio.Lock()
 
     async def connect(self, user_id: uuid.UUID, websocket: WebSocket) -> None:
-        await websocket.accept()
+        try:
+            from starlette.websockets import WebSocketState
+            if websocket.client_state == WebSocketState.CONNECTING:
+                await websocket.accept()
+        except Exception:
+            pass
         async with self._lock:
             self._connections[user_id].add(websocket)
 

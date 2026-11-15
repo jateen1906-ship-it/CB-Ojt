@@ -191,6 +191,7 @@ async def get_task_file_content(
 
 
 @router.put("/{task_id}/files/content", summary="Save workspace file content")
+@router.post("/{task_id}/files/content", summary="Save workspace file content (post)")
 async def save_task_file_content(
     task_id: str,
     request: Request,

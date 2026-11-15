@@ -140,6 +140,11 @@ async def get_submission_run(
     status_code=status.HTTP_201_CREATED,
     summary="Submit task solution for review",
 )
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit task solution for review (slash)",
+)
 async def submit_solution(
     request: Request,
     user: AuthenticatedUser = Depends(require_authenticated),
@@ -148,7 +153,7 @@ async def submit_solution(
         body = await request.json()
     except Exception:
         body = {}
-    task_id = body.get("taskId") or "t1"
+    task_id = body.get("taskId") or body.get("task_id") or "t1"
     sub_id = f"sub_{uuid.uuid4().hex[:8]}"
     _TASK_SUBMISSIONS[task_id] = {
         "status": "in_review",
@@ -162,12 +167,18 @@ async def submit_solution(
     "/current",
     summary="Get current submission state for task",
 )
+@router.get(
+    "/current/",
+    summary="Get current submission state for task (slash)",
+)
 async def get_current_submission_state(
-    taskId: str = "t1",
+    taskId: str | None = None,
+    task_id: str | None = None,
     user: AuthenticatedUser = Depends(require_authenticated),
 ) -> dict:
-    if taskId in _TASK_SUBMISSIONS:
-        return _TASK_SUBMISSIONS[taskId]
+    resolved_id = taskId or task_id or "t1"
+    if resolved_id in _TASK_SUBMISSIONS:
+        return _TASK_SUBMISSIONS[resolved_id]
     return {"status": "none"}
 
 

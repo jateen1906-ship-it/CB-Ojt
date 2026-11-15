@@ -30,6 +30,11 @@ async def get_current_user_me(
     status_code=status.HTTP_200_OK,
     summary="Save owner onboarding profile",
 )
+@users_router.patch(
+    "/me/owner-profile",
+    status_code=status.HTTP_200_OK,
+    summary="Save owner onboarding profile (patch)",
+)
 async def save_owner_profile(
     request: Request,
     current_user: User = Depends(get_current_user),
@@ -47,6 +52,11 @@ async def save_owner_profile(
     "/profiles/me",
     status_code=status.HTTP_200_OK,
     summary="Save freelancer onboarding profile",
+)
+@talent_router.patch(
+    "/profiles/me",
+    status_code=status.HTTP_200_OK,
+    summary="Save freelancer onboarding profile (patch)",
 )
 async def save_talent_profile(
     request: Request,

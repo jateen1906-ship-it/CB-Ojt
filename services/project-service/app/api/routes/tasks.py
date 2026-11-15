@@ -48,6 +48,7 @@ def _to_task_summary(proj: Project) -> dict[str, Any]:
 
 
 @router.get("/mine", summary="List tasks assigned to the caller")
+@router.get("/mine/", summary="List tasks assigned to the caller (slash)")
 async def get_my_tasks(
     current_user: AuthenticatedUser = Depends(require_any_authenticated),
     session: AsyncSession = Depends(get_db_session),
