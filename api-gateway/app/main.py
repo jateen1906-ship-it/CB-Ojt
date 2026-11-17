@@ -88,6 +88,10 @@ def create_app(
         proxy_router,
         prefix=resolved_settings.API_V1_PREFIX,
     )
+    application.include_router(
+        proxy_router,
+        prefix=f"{resolved_settings.API_V1_PREFIX}{resolved_settings.API_V1_PREFIX}",
+    )
 
     return application
 
