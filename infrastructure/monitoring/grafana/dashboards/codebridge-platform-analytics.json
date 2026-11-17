@@ -52,7 +52,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Total Projects\" FROM projects;",
+          "rawSql": "SELECT count(*) AS \"Total Projects\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
           "refId": "A"
         }
       ],
@@ -139,7 +139,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COALESCE(sum(amount), 0) AS \"Escrow Volume\" FROM escrow_payments;",
+          "rawSql": "SELECT COALESCE(sum(amount), 0) AS \"Escrow Volume\" FROM escrow_payments WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
           "refId": "A"
         }
       ],
@@ -182,7 +182,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Active Projects\" FROM projects WHERE status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS');",
+          "rawSql": "SELECT count(*) AS \"Active Projects\" FROM projects WHERE status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS') AND ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
           "refId": "A"
         }
       ],
@@ -224,7 +224,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT status, count(*) AS count FROM projects GROUP BY status;",
+          "rawSql": "SELECT status, count(*) AS count FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY status;",
           "refId": "A"
         }
       ],
@@ -317,7 +317,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT status, sum(amount) AS total_amount FROM escrow_payments GROUP BY status;",
+          "rawSql": "SELECT status, sum(amount) AS total_amount FROM escrow_payments WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY status;",
           "refId": "A"
         }
       ],
@@ -362,7 +362,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT title, status, budget, currency, created_at FROM projects ORDER BY created_at DESC LIMIT 10;",
+          "rawSql": "SELECT title, status, budget, currency, created_at FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') ORDER BY created_at DESC LIMIT 10;",
           "refId": "A"
         }
       ],
@@ -373,12 +373,38 @@
   "refresh": "5s",
   "schemaVersion": 39,
   "tags": ["codebridge", "analytics", "production"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Project Owner",
+        "multi": false,
+        "name": "owner_id",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "All"
+          }
+        ],
+        "query": "SELECT 'All' AS __text, 'All' AS __value UNION SELECT full_name AS __text, id::text AS __value FROM users WHERE role = 'OWNER';",
+        "datasource": { "type": "postgres", "uid": "CodeBridge-Identity" },
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
   "time": { "from": "now-30d", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
   "title": "CodeBridge Platform Analytics",
   "uid": "codebridge-analytics",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
