@@ -115,6 +115,12 @@ class ProjectCreateRequest(BaseModel):
             if "deadline" not in data or not data.get("deadline"):
                 from datetime import timedelta
                 data["deadline"] = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+            else:
+                raw_dl = str(data["deadline"]).strip()
+                if "T" in raw_dl:
+                    data["deadline"] = raw_dl.split("T")[0]
+                elif " " in raw_dl:
+                    data["deadline"] = raw_dl.split(" ")[0]
             if "required_skills" not in data or not data.get("required_skills"):
                 data["required_skills"] = ["Python", "FastAPI"]
         return data
@@ -204,6 +210,17 @@ class ProjectUpdateRequest(BaseModel):
     @classmethod
     def _validate_currency(cls, value: str | None) -> str | None:
         return _validate_currency_code(value) if value is not None else None
+
+    @field_validator("deadline", mode="before")
+    @classmethod
+    def _sanitize_update_deadline(cls, value: object) -> object:
+        if value is not None and isinstance(value, str):
+            raw_dl = value.strip()
+            if "T" in raw_dl:
+                return raw_dl.split("T")[0]
+            if " " in raw_dl:
+                return raw_dl.split(" ")[0]
+        return value
 
     @field_validator("deadline")
     @classmethod

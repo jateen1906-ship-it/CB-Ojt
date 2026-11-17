@@ -25,6 +25,24 @@ async def get_current_user_me(
     return UserPublicResponse.model_validate(current_user)
 
 
+@users_router.get(
+    "/me/owner-profile",
+    status_code=status.HTTP_200_OK,
+    summary="Get owner onboarding profile",
+)
+async def get_owner_profile(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return {
+        "profile": {
+            "organizationName": current_user.full_name or "",
+            "roleTitle": "Owner",
+            "timezone": "UTC",
+        },
+        "onboardingCompleted": True,
+    }
+
+
 @users_router.put(
     "/me/owner-profile",
     status_code=status.HTTP_200_OK,
