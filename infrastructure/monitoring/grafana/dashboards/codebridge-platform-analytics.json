@@ -54,7 +54,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Total Projects\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
+          "rawSql": "SELECT count(*) AS \"Total Projects\" FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}');",
           "refId": "A"
         }
       ],
@@ -99,7 +99,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Active Projects\" FROM projects WHERE status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS') AND ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
+          "rawSql": "SELECT count(*) AS \"Active Projects\" FROM projects WHERE status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS') AND ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}');",
           "refId": "A"
         }
       ],
@@ -145,7 +145,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COALESCE(sum(budget), 0) AS \"Committed Budget\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
+          "rawSql": "SELECT COALESCE(sum(budget), 0) AS \"Committed Budget\" FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}');",
           "refId": "A"
         }
       ],
@@ -263,7 +263,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) AS \"Projects Launched\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY 1 ORDER BY 1;",
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, count(*) AS \"Projects Launched\" FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}') GROUP BY 1 ORDER BY 1;",
           "refId": "A"
         }
       ],
@@ -316,7 +316,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT trim(both '\"' from skill_item::text) AS \"Skill\", count(*)::int AS \"Projects\" FROM projects p JOIN project_requirements pr ON p.id = pr.project_id CROSS JOIN LATERAL jsonb_array_elements(pr.required_skills::jsonb) AS skill_item WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR p.owner_id::text = '$owner_id') GROUP BY 1 ORDER BY 2 DESC LIMIT 6;",
+          "rawSql": "SELECT trim(both '\"' from skill_item::text) AS \"Skill\", count(*)::int AS \"Projects\" FROM projects p JOIN project_requirements pr ON p.id = pr.project_id CROSS JOIN LATERAL jsonb_array_elements(pr.required_skills::jsonb) AS skill_item WHERE ('${owner_id:raw}' = 'All' OR p.owner_id::text = '${owner_id:raw}') GROUP BY 1 ORDER BY 2 DESC LIMIT 6;",
           "refId": "A"
         }
       ],
@@ -360,7 +360,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT status, count(*) AS count FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY status ORDER BY count DESC;",
+          "rawSql": "SELECT status, count(*) AS count FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}') GROUP BY status ORDER BY count DESC;",
           "refId": "A"
         }
       ],
@@ -414,7 +414,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT status, sum(budget) AS \"Allocated Budget\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY status ORDER BY 2 DESC;",
+          "rawSql": "SELECT status, sum(budget) AS \"Allocated Budget\" FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}') GROUP BY status ORDER BY 2 DESC;",
           "refId": "A"
         }
       ],
@@ -518,7 +518,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT title AS \"Title\", status AS \"Status\", budget AS \"Budget\", currency AS \"Currency\", deadline AS \"Deadline\", created_at AS \"Created At\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') ORDER BY created_at DESC LIMIT 8;",
+          "rawSql": "SELECT title AS \"Title\", status AS \"Status\", budget AS \"Budget\", currency AS \"Currency\", deadline AS \"Deadline\", created_at AS \"Created At\" FROM projects WHERE ('${owner_id:raw}' = 'All' OR owner_id::text = '${owner_id:raw}') ORDER BY created_at DESC LIMIT 8;",
           "refId": "A"
         }
       ],
@@ -539,7 +539,7 @@
           "value": "All"
         },
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Project Owner",
         "multi": false,
         "name": "owner_id",
@@ -550,7 +550,7 @@
             "value": "All"
           }
         ],
-        "query": "SELECT 'All' AS __text, 'All' AS __value UNION SELECT full_name AS __text, id::text AS __value FROM users WHERE role = 'OWNER';",
+        "query": "SELECT 'All' AS __text, 'All' AS __value UNION SELECT full_name AS __text, id::text AS __value FROM users;",
         "datasource": { "type": "postgres", "uid": "CodeBridge-Identity" },
         "refresh": 1,
         "type": "query"
@@ -562,6 +562,6 @@
   "timezone": "browser",
   "title": "CodeBridge Platform Analytics",
   "uid": "codebridge-analytics",
-  "version": 7,
+  "version": 8,
   "weekStart": ""
 }
