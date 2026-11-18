@@ -107,6 +107,11 @@ async def get_talent_matches(
     return items
 
 
+@talent_router.get(
+    "/profiles/me",
+    status_code=status.HTTP_200_OK,
+    summary="Get freelancer talent profile",
+)
 @talent_router.put(
     "/profiles/me",
     status_code=status.HTTP_200_OK,
@@ -117,10 +122,32 @@ async def get_talent_matches(
     status_code=status.HTTP_200_OK,
     summary="Save freelancer onboarding profile (patch)",
 )
-async def save_talent_profile(
+async def handle_talent_profile(
     request: Request,
     current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
 ) -> dict:
+    service = ProfileService(session)
+    profile = await service.profile_repo.get_by_user_id(current_user.id)
+    if request.method == "GET":
+        skills = profile.skills if profile and profile.skills else []
+        bio = profile.bio if profile and profile.bio else ""
+        return {
+            "profile": {
+                "id": str(profile.id) if profile else str(current_user.id),
+                "user_id": str(current_user.id),
+                "fullName": current_user.full_name,
+                "email": current_user.email,
+                "bio": bio,
+                "skills": skills,
+                "experienceYears": profile.experience_years if profile else 0,
+                "availability": getattr(profile, "availability", "AVAILABLE") if profile else "AVAILABLE",
+                "githubVerified": True,
+                "rating": None,
+            },
+            "onboardingCompleted": True,
+        }
+
     body = await request.json()
     return {
         "profile": {

@@ -527,6 +527,7 @@ services:
       - GF_UNIFIED_ALERTING_ENABLED=false
       - GF_ALERTING_ENABLED=false
     volumes:
+      - ./infrastructure/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
