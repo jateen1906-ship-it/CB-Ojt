@@ -13,7 +13,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "⚡ Key Performance Indicators",
+      "title": "Key Performance Indicators",
       "type": "row"
     },
     {
@@ -21,14 +21,13 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed",
-            "fixedColor": "semi-dark-blue"
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "blue", "value": null }
+              { "color": "semi-dark-blue", "value": null }
             ]
           }
         },
@@ -37,8 +36,8 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "id": 1,
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
+        "colorMode": "value",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -59,7 +58,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Projects Created",
+      "title": "Total Projects",
       "type": "stat"
     },
     {
@@ -67,14 +66,13 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed",
-            "fixedColor": "semi-dark-green"
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null }
+              { "color": "semi-dark-blue", "value": null }
             ]
           }
         },
@@ -83,8 +81,8 @@
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
       "id": 2,
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
+        "colorMode": "value",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -113,14 +111,13 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed",
-            "fixedColor": "semi-dark-orange"
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "orange", "value": null }
+              { "color": "semi-dark-blue", "value": null }
             ]
           },
           "unit": "currencyINR"
@@ -130,8 +127,8 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
       "id": 3,
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
+        "colorMode": "value",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -152,7 +149,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Project Budget",
+      "title": "Total Budget",
       "type": "stat"
     },
     {
@@ -160,14 +157,13 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed",
-            "fixedColor": "semi-dark-purple"
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "purple", "value": null }
+              { "color": "semi-dark-blue", "value": null }
             ]
           }
         },
@@ -176,8 +172,8 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
       "id": 4,
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
+        "colorMode": "value",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -198,14 +194,14 @@
           "refId": "A"
         }
       ],
-      "title": "Total Platform Users",
+      "title": "Total Users",
       "type": "stat"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 101,
-      "title": "📈 Activity Wave & Technology Demand",
+      "title": "Activity & Demand",
       "type": "row"
     },
     {
@@ -213,22 +209,23 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "fixedColor": "semi-dark-blue",
+            "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "Projects Count",
+            "axisLabel": "Projects",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 45,
+            "fillOpacity": 20,
             "gradientMode": "opacity",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "smooth",
-            "lineWidth": 3,
-            "pointSize": 6,
+            "lineWidth": 2,
+            "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "auto",
             "spanNulls": false,
@@ -239,23 +236,23 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null }
+              { "color": "semi-dark-blue", "value": null }
             ]
           }
         },
         "overrides": []
       },
-      "gridPos": { "h": 9, "w": 14, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["sum", "max"],
-          "displayMode": "table",
+          "calcs": ["sum"],
+          "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
@@ -270,38 +267,47 @@
           "refId": "A"
         }
       ],
-      "title": "Project Activity Velocity (Timeline)",
+      "title": "Project Creation Timeline",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "postgres", "uid": "CodeBridge-Projects" },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "mode": "candles"
+          "color": {
+            "fixedColor": "semi-dark-blue",
+            "mode": "fixed"
           },
-          "unit": "currencyINR"
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Projects",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineWidth": 1,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": []
         },
         "overrides": []
       },
-      "gridPos": { "h": 9, "w": 10, "x": 14, "y": 6 },
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
       "id": 6,
       "options": {
-        "candlestick": {
-          "colors": {
-            "down": "semi-dark-red",
-            "flat": "gray",
-            "up": "semi-dark-green"
-          }
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single"
-        }
+        "barRadius": 0.15,
+        "barWidth": 0.6,
+        "groupWidth": 0.7,
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": { "mode": "single", "sort": "none" },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "pluginVersion": "10.4.0",
       "targets": [
@@ -310,25 +316,27 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT date_trunc('day', created_at) AS time, min(budget)::float AS open, max(budget)::float AS high, (min(budget)*0.9)::float AS low, avg(budget)::float AS close, count(*)::float AS volume FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') GROUP BY 1 ORDER BY 1;",
+          "rawSql": "SELECT trim(both '\"' from skill_item::text) AS \"Skill\", count(*)::int AS \"Projects\" FROM projects p JOIN project_requirements pr ON p.id = pr.project_id CROSS JOIN LATERAL jsonb_array_elements(pr.required_skills::jsonb) AS skill_item WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR p.owner_id::text = '$owner_id') GROUP BY 1 ORDER BY 2 DESC LIMIT 6;",
           "refId": "A"
         }
       ],
-      "title": "Project Valuation & Budget Trend (Candle Graph)",
-      "type": "candlestick"
+      "title": "Required Skills",
+      "type": "barchart"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "id": 102,
-      "title": "📊 Project Lifecycle & Budget Allocation",
+      "title": "Lifecycle & Community",
       "type": "row"
     },
     {
       "datasource": { "type": "postgres", "uid": "CodeBridge-Projects" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "hideFrom": { "legend": false, "tooltip": false, "viz": false }
           },
@@ -336,7 +344,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
       "id": 7,
       "options": {
         "displayLabels": ["percent", "value"],
@@ -356,22 +364,25 @@
           "refId": "A"
         }
       ],
-      "title": "Projects Breakdown by Lifecycle Status",
+      "title": "Projects by Status",
       "type": "piechart"
     },
     {
       "datasource": { "type": "postgres", "uid": "CodeBridge-Projects" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "fixedColor": "semi-dark-blue",
+            "mode": "fixed"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "Budget Allocated",
+            "axisLabel": "Budget",
             "axisPlacement": "auto",
             "fillOpacity": 80,
-            "gradientMode": "opacity",
+            "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineWidth": 1,
             "scaleDistribution": { "type": "linear" },
@@ -382,13 +393,13 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
       "id": 8,
       "options": {
-        "barRadius": 0.2,
+        "barRadius": 0.15,
         "barWidth": 0.6,
         "groupWidth": 0.7,
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
         "orientation": "auto",
         "showValue": "always",
         "stacking": "none",
@@ -407,22 +418,24 @@
           "refId": "A"
         }
       ],
-      "title": "Budget Capital Distribution by Status",
+      "title": "Budget by Status",
       "type": "barchart"
     },
     {
       "datasource": { "type": "postgres", "uid": "CodeBridge-Identity" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "Total Users",
+            "axisLabel": "Users",
             "axisPlacement": "auto",
-            "fillOpacity": 85,
-            "gradientMode": "opacity",
+            "fillOpacity": 80,
+            "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineWidth": 1,
             "scaleDistribution": { "type": "linear" },
@@ -432,10 +445,10 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
       "id": 9,
       "options": {
-        "barRadius": 0.25,
+        "barRadius": 0.15,
         "barWidth": 0.55,
         "groupWidth": 0.7,
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false },
@@ -457,14 +470,14 @@
           "refId": "A"
         }
       ],
-      "title": "Platform User Community (Freelancers vs Owners)",
+      "title": "Users by Role",
       "type": "barchart"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
       "id": 103,
-      "title": "📋 Project Milestone Feed & Deliverables",
+      "title": "Project Milestones",
       "type": "row"
     },
     {
@@ -480,40 +493,21 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [{ "color": "semi-dark-blue", "value": null }]
           }
         },
         "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Status" },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": { "type": "color-background", "mode": "gradient" }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  { "type": "value", "options": { "OPEN": { "color": "semi-dark-yellow", "index": 0 } } },
-                  { "type": "value", "options": { "IN_PROGRESS": { "color": "semi-dark-blue", "index": 1 } } },
-                  { "type": "value", "options": { "COMPLETED": { "color": "semi-dark-green", "index": 2 } } },
-                  { "type": "value", "options": { "CHANGES_REQUESTED": { "color": "semi-dark-orange", "index": 3 } } },
-                  { "type": "value", "options": { "CANCELLED": { "color": "semi-dark-red", "index": 4 } } }
-                ]
-              }
-            ]
-          },
           {
             "matcher": { "id": "byName", "options": "Budget" },
             "properties": [{ "id": "unit", "value": "currencyINR" }]
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 25 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
       "id": 10,
       "options": {
         "cellHeight": "sm",
-        "footer": { "countRows": true, "fields": "", "reducer": ["sum"], "show": true },
+        "footer": { "countRows": true, "fields": "", "reducer": ["sum"], "show": false },
         "showHeader": true,
         "sortBy": [{ "desc": true, "displayName": "Created At" }]
       },
@@ -524,11 +518,11 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT title AS \"Title\", status AS \"Status\", budget AS \"Budget\", currency AS \"Currency\", deadline AS \"Deadline\", created_at AS \"Created At\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') ORDER BY created_at DESC LIMIT 15;",
+          "rawSql": "SELECT title AS \"Title\", status AS \"Status\", budget AS \"Budget\", currency AS \"Currency\", deadline AS \"Deadline\", created_at AS \"Created At\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id') ORDER BY created_at DESC LIMIT 8;",
           "refId": "A"
         }
       ],
-      "title": "Recent Projects & Milestones Ledger",
+      "title": "Recent Projects",
       "type": "table"
     }
   ],
@@ -538,13 +532,14 @@
   "templating": {
     "list": [
       {
+        "allValue": "All",
         "current": {
           "selected": true,
           "text": "All",
           "value": "All"
         },
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "Project Owner",
         "multi": false,
         "name": "owner_id",
@@ -567,6 +562,6 @@
   "timezone": "browser",
   "title": "CodeBridge Platform Analytics",
   "uid": "codebridge-analytics",
-  "version": 6,
+  "version": 7,
   "weekStart": ""
 }
