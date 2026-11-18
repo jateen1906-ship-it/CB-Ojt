@@ -156,7 +156,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "CodeBridge-Projects" },
+      "datasource": { "type": "postgres", "uid": "CodeBridge-Identity" },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -169,8 +169,7 @@
             "steps": [
               { "color": "purple", "value": null }
             ]
-          },
-          "unit": "currencyINR"
+          }
         },
         "overrides": []
       },
@@ -191,15 +190,15 @@
       "pluginVersion": "10.4.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "CodeBridge-Projects" },
+          "datasource": { "type": "postgres", "uid": "CodeBridge-Identity" },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COALESCE(round(avg(budget), 0), 0) AS \"Avg Budget\" FROM projects WHERE ('$owner_id' = 'All' OR '$owner_id' = '$__all' OR owner_id::text = '$owner_id');",
+          "rawSql": "SELECT count(*) AS \"Total Platform Users\" FROM users WHERE is_active = true;",
           "refId": "A"
         }
       ],
-      "title": "Average Project Budget",
+      "title": "Total Platform Users",
       "type": "stat"
     },
     {
@@ -559,6 +558,6 @@
   "timezone": "browser",
   "title": "CodeBridge Platform Analytics",
   "uid": "codebridge-analytics",
-  "version": 3,
+  "version": 5,
   "weekStart": ""
 }
