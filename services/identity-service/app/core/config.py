@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
     KAFKA_ENABLED: bool = True
 
+    # OAuth credentials (Google Identity & GitHub OAuth)
+    GOOGLE_CLIENT_ID: str | None = None
+    GITHUB_CLIENT_ID: str | None = None
+    GITHUB_CLIENT_SECRET: SecretStr | None = None
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def _parse_debug(cls, value: object) -> bool:

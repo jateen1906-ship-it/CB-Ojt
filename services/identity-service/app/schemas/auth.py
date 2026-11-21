@@ -20,11 +20,11 @@ from app.schemas.user import UserPublicResponse
 class RegisterRequest(BaseModel):
     """Public account registration payload (OWNER or FREELANCER only)."""
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    full_name: str = Field(..., min_length=1, max_length=120, examples=["Demo User"])
+    full_name: str = Field(..., min_length=2, max_length=120, examples=["Demo User"])
     email: EmailStr = Field(..., examples=["demo@example.com"])
-    password: str = Field(..., min_length=6, max_length=128, examples=["StrongPassword123!"])
+    password: str = Field(..., min_length=8, max_length=128, examples=["StrongPassword123!"])
     role: UserRole = Field(default=UserRole.FREELANCER, examples=[UserRole.FREELANCER])
 
     @model_validator(mode="before")
@@ -39,29 +39,38 @@ class RegisterRequest(BaseModel):
                     data["full_name"] = data["name"]
                 elif "username" in data and str(data["username"]).strip():
                     data["full_name"] = data["username"]
-                else:
-                    data["full_name"] = "User"
-            # Support lowercase roles: 'owner' -> 'OWNER', 'freelancer' -> 'FREELANCER'
+            # Support case-insensitive role string
             if "role" in data and isinstance(data["role"], str):
                 role_upper = data["role"].strip().upper()
-                if role_upper in {"OWNER", "FREELANCER"}:
+                if role_upper in {"OWNER", "FREELANCER", "ADMIN"}:
                     data["role"] = role_upper
-                else:
-                    data["role"] = "FREELANCER"
-            elif "role" not in data:
-                data["role"] = "FREELANCER"
         return data
 
     @field_validator("full_name")
     @classmethod
     def _clean_full_name(cls, value: str) -> str:
         cleaned = " ".join(value.strip().split())
-        return cleaned if cleaned else "User"
+        if len(cleaned) < 2:
+            raise ValueError("full_name must contain at least 2 non-space characters.")
+        return cleaned
 
     @field_validator("email")
     @classmethod
     def _normalize_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password_strength(cls, value: str) -> str:
+        has_upper = any(ch.isupper() for ch in value)
+        has_lower = any(ch.islower() for ch in value)
+        has_digit = any(ch.isdigit() for ch in value)
+        has_special = any(not ch.isalnum() for ch in value)
+        if not (has_upper and has_lower and has_digit and has_special):
+            raise ValueError(
+                "Password must contain uppercase, lowercase, numeric, and special characters."
+            )
+        return value
 
 
 class LoginRequest(BaseModel):
@@ -131,4 +140,57 @@ class TokenPairResponse(BaseModel):
         self.refreshToken = self.refresh_token
         self.expiresIn = self.expires_in
         return self
+
+
+class GoogleAuthRequest(BaseModel):
+    """Google OAuth ID token verification payload for Freelancers."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    credential: str = Field(..., min_length=10, description="Google ID Token issued by Google Identity Services")
+    role: UserRole = Field(
+        default=UserRole.FREELANCER,
+        description="Role for onboarding: only FREELANCER is permitted for Google authentication",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _preprocess(cls, data: object) -> object:
+        if isinstance(data, dict):
+            if "id_token" in data and "credential" not in data:
+                data["credential"] = data["id_token"]
+            if "role" in data and isinstance(data["role"], str):
+                role_upper = data["role"].strip().upper()
+                if role_upper in {"OWNER", "FREELANCER", "ADMIN"}:
+                    data["role"] = role_upper
+        return data
+
+
+class GitHubAuthRequest(BaseModel):
+    """GitHub OAuth authorization code payload for Owners and Freelancers."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    code: str = Field(..., min_length=1, description="GitHub OAuth authorization code")
+    role: UserRole = Field(
+        default=UserRole.OWNER,
+        description="Role for onboarding: OWNER or FREELANCER",
+    )
+    redirect_uri: str | None = Field(
+        default=None,
+        description="Optional redirect URI matching client OAuth initiation",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _preprocess(cls, data: object) -> object:
+        if isinstance(data, dict):
+            if "redirectUri" in data and "redirect_uri" not in data:
+                data["redirect_uri"] = data["redirectUri"]
+            if "role" in data and isinstance(data["role"], str):
+                role_upper = data["role"].strip().upper()
+                if role_upper in {"OWNER", "FREELANCER", "ADMIN"}:
+                    data["role"] = role_upper
+        return data
+
 

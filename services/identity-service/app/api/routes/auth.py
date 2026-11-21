@@ -14,6 +14,8 @@ from app.core.dependencies import get_current_user, get_settings, require_admin
 from app.core.security import decode_token
 from app.models.user import User, UserRole
 from app.schemas.auth import (
+    GitHubAuthRequest,
+    GoogleAuthRequest,
     LoginRequest,
     LogoutRequest,
     RefreshTokenRequest,
@@ -201,13 +203,10 @@ async def logout_user(
 
     if token_str:
         service = AuthService(session, settings)
-        try:
-            await service.logout(
-                refresh_token=token_str,
-                authenticated_user_id=current_user.id,
-            )
-        except Exception:
-            pass
+        await service.logout(
+            refresh_token=token_str,
+            authenticated_user_id=current_user.id,
+        )
 
     response.delete_cookie(key="refresh_token", path="/")
 
@@ -223,6 +222,96 @@ async def logout_user(
                 pass
 
     return MessageResponse(message="Logged out successfully.")
+
+
+@router.post(
+    "/google",
+    response_model=TokenPairResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Authenticate or onboard a FREELANCER via Google OAuth ID token",
+    description=(
+        "Verifies Google OAuth ID token, checks email verification, ensures user is not an OWNER, "
+        "registers new freelancer profile or signs in existing freelancer, and issues token pair."
+    ),
+    responses={
+        401: {"model": ErrorResponse, "description": "Invalid or expired Google credential."},
+        403: {"model": ErrorResponse, "description": "Project owners must authenticate via GitHub, or account inactive/unverified."},
+        422: {"model": ErrorResponse, "description": "Validation error."},
+    },
+)
+async def google_auth(
+    request: Request,
+    response: Response,
+    payload: GoogleAuthRequest,
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> TokenPairResponse:
+    service = AuthService(session, settings)
+    tokens = await service.login_or_register_google(payload)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
+
+    producer = getattr(request.app.state, "kafka_producer", None)
+    if producer and producer.is_available:
+        await producer.publish_auth_event(
+            event_type="user.google_auth",
+            user_id=str(tokens.user.id),
+            payload={"email": str(tokens.user.email), "role": tokens.user.role.value if hasattr(tokens.user.role, "value") else str(tokens.user.role)},
+        )
+
+    return tokens
+
+
+@router.post(
+    "/github",
+    response_model=TokenPairResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Authenticate or onboard an OWNER or FREELANCER via GitHub OAuth code",
+    description=(
+        "Exchanges GitHub authorization code for user profile and verified email. "
+        "Enforces developer/owner onboarding to GitHub. Issues CodeBridge JWT pair."
+    ),
+    responses={
+        401: {"model": ErrorResponse, "description": "GitHub code exchange failed or invalid token."},
+        403: {"model": ErrorResponse, "description": "Missing verified email or inactive account."},
+        422: {"model": ErrorResponse, "description": "Validation error."},
+    },
+)
+async def github_auth(
+    request: Request,
+    response: Response,
+    payload: GitHubAuthRequest,
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> TokenPairResponse:
+    service = AuthService(session, settings)
+    tokens = await service.login_or_register_github(payload)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
+
+    producer = getattr(request.app.state, "kafka_producer", None)
+    if producer and producer.is_available:
+        await producer.publish_auth_event(
+            event_type="user.github_auth",
+            user_id=str(tokens.user.id),
+            payload={"email": str(tokens.user.email), "role": tokens.user.role.value if hasattr(tokens.user.role, "value") else str(tokens.user.role)},
+        )
+
+    return tokens
 
 
 @router.get(
