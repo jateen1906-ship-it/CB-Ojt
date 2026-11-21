@@ -129,3 +129,12 @@ def register_exception_handlers(app: FastAPI) -> None:
             message="An unexpected internal server error occurred.",
             request_id=resolve_request_id(request),
         )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, _exc: Exception) -> JSONResponse:
+        return build_error_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="INTERNAL_SERVER_ERROR",
+            message="An unexpected internal server error occurred.",
+            request_id=resolve_request_id(request),
+        )
