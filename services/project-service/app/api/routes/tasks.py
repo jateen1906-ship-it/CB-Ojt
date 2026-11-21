@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_session
 from app.core.dependencies import require_any_authenticated
 from app.core.security import AuthenticatedUser
-from app.models.project import Project, ProjectStatus
+from app.models.project import Project
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 

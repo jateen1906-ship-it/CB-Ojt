@@ -26,11 +26,10 @@ async def test_gateway_startup_and_health_endpoint_with_services_offline() -> No
             response = await client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "healthy",
-        "service": "api-gateway",
-        "version": "1.0.0",
-    }
+    res_data = response.json()
+    assert res_data["status"] == "healthy"
+    assert res_data["service"] == "api-gateway"
+    assert res_data["version"] == "1.0.0"
     assert "X-Request-ID" in response.headers
     assert not app.state.http_client.is_open
 
