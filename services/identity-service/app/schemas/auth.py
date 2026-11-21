@@ -143,14 +143,27 @@ class TokenPairResponse(BaseModel):
 
 
 class GoogleAuthRequest(BaseModel):
-    """Google OAuth ID token verification payload for Freelancers."""
+    """Google OAuth ID token verification or auth code exchange payload for Freelancers."""
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    credential: str = Field(..., min_length=10, description="Google ID Token issued by Google Identity Services")
+    credential: str | None = Field(
+        default=None,
+        min_length=10,
+        description="Google ID Token issued by Google Identity Services",
+    )
+    code: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Google OAuth authorization code (for code exchange flow)",
+    )
     role: UserRole = Field(
         default=UserRole.FREELANCER,
         description="Role for onboarding: only FREELANCER is permitted for Google authentication",
+    )
+    redirect_uri: str | None = Field(
+        default=None,
+        description="Optional redirect URI used in auth code flow",
     )
 
     @model_validator(mode="before")
@@ -163,7 +176,15 @@ class GoogleAuthRequest(BaseModel):
                 role_upper = data["role"].strip().upper()
                 if role_upper in {"OWNER", "FREELANCER", "ADMIN"}:
                     data["role"] = role_upper
+            if "redirectUri" in data and "redirect_uri" not in data:
+                data["redirect_uri"] = data["redirectUri"]
         return data
+
+    @model_validator(mode="after")
+    def _validate_credential_or_code(self) -> GoogleAuthRequest:
+        if not self.credential and not self.code:
+            raise ValueError("Either Google 'credential' (ID token) or 'code' (authorization code) must be provided.")
+        return self
 
 
 class GitHubAuthRequest(BaseModel):

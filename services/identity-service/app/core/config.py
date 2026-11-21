@@ -56,6 +56,7 @@ class Settings(BaseSettings):
 
     # OAuth credentials (Google Identity & GitHub OAuth)
     GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: SecretStr | None = None
     GITHUB_CLIENT_ID: str | None = None
     GITHUB_CLIENT_SECRET: SecretStr | None = None
 

@@ -126,16 +126,77 @@ class AuthService:
         email: str
         full_name: str
 
-        if self.settings.APP_ENV == "test" and payload.credential.startswith("mock-google-token:"):
-            parts = payload.credential.split(":")
+        if self.settings.APP_ENV == "test" and (
+            (payload.credential and payload.credential.startswith("mock-google-token:"))
+            or (payload.code and payload.code.startswith("mock-google-code:"))
+        ):
+            raw = payload.credential if payload.credential else (payload.code or "")
+            parts = raw.split(":")
             email = parts[1].strip().lower()
             full_name = parts[2].strip() if len(parts) > 2 else "Google Freelancer"
+        elif payload.code and not payload.credential:
+            client_id = self.settings.GOOGLE_CLIENT_ID or ""
+            client_secret = (
+                self.settings.GOOGLE_CLIENT_SECRET.get_secret_value()
+                if self.settings.GOOGLE_CLIENT_SECRET
+                else ""
+            )
+            token_params = {
+                "code": payload.code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": payload.redirect_uri or "postmessage",
+                "grant_type": "authorization_code",
+            }
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        "https://oauth2.googleapis.com/token",
+                        data=token_params,
+                    )
+                    if resp.status_code != 200:
+                        logger.warning("Google token endpoint rejected code with status %d: %s", resp.status_code, resp.text)
+                        raise InvalidCredentialsError("Failed to exchange Google authorization code.")
+
+                    token_res = resp.json()
+                    access_token_val = token_res.get("access_token")
+                    if not access_token_val:
+                        raise InvalidCredentialsError("Google token exchange did not return an access token.")
+
+                    userinfo_resp = await client.get(
+                        "https://www.googleapis.com/oauth2/v3/userinfo",
+                        headers={"Authorization": f"Bearer {access_token_val}"},
+                    )
+                    if userinfo_resp.status_code != 200:
+                        raise InvalidCredentialsError("Failed to fetch Google user profile.")
+                    google_info = userinfo_resp.json()
+            except httpx.RequestError as exc:
+                logger.error("Failed to reach Google token endpoint", exc_info=exc)
+                raise InvalidCredentialsError(
+                    "Unable to reach Google OAuth services. Please try again."
+                ) from exc
+
+            raw_email = google_info.get("email")
+            if not raw_email or not isinstance(raw_email, str):
+                raise InvalidCredentialsError("Google credential does not contain an email address.")
+            email = raw_email.strip().lower()
+
+            email_verified = google_info.get("email_verified")
+            if email_verified not in (True, "true", "True", 1, "1"):
+                raise ForbiddenError("Your Google account email address must be verified.")
+
+            full_name = (
+                google_info.get("name")
+                or google_info.get("given_name")
+                or email.split("@")[0]
+            )
         else:
+            credential_val = payload.credential or ""
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.get(
                         "https://oauth2.googleapis.com/tokeninfo",
-                        params={"id_token": payload.credential},
+                        params={"id_token": credential_val},
                     )
             except httpx.RequestError as exc:
                 logger.error("Failed to reach Google tokeninfo endpoint", exc_info=exc)

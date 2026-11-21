@@ -52,6 +52,39 @@ async def test_google_auth_freelancer_success(
 
 
 @pytest.mark.asyncio
+async def test_google_auth_code_flow_freelancer_success(
+    client: httpx.AsyncClient,
+    identity_app: FastAPI,
+) -> None:
+    """Test freelancer onboarding via Google auth-code flow."""
+    response = await client.post(
+        "/api/v1/auth/google",
+        json={
+            "code": "mock-google-code:codefreelancer@example.com:Code Freelancer",
+            "role": "FREELANCER",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["email"] == "codefreelancer@example.com"
+    assert data["user"]["role"] == "FREELANCER"
+
+
+@pytest.mark.asyncio
+async def test_google_auth_requires_credential_or_code(
+    client: httpx.AsyncClient,
+) -> None:
+    """Rejects if neither credential nor code is provided."""
+    response = await client.post(
+        "/api/v1/auth/google",
+        json={
+            "role": "FREELANCER",
+        },
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_google_auth_rejects_owner_role(
     client: httpx.AsyncClient,
 ) -> None:
