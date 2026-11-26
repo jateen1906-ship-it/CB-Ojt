@@ -1,0 +1,39 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PORT=8000 \
+    APP_ENV=development \
+    PYTHONMALLOC=malloc
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor \
+    nginx \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY services/github-service/requirements.txt /tmp/req_github.txt
+COPY services/review-service/requirements.txt /tmp/req_review.txt
+COPY services/verification-service/requirements.txt /tmp/req_verify.txt
+COPY services/admin-service/requirements.txt /tmp/req_admin.txt
+COPY services/audit-service/requirements.txt /tmp/req_audit.txt
+
+RUN cat /tmp/req_*.txt | sort -u > /tmp/all_requirements.txt && \
+    pip install --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/all_requirements.txt && \
+    rm -f /tmp/req_*.txt /tmp/all_requirements.txt
+
+COPY shared /app/shared
+COPY services /app/services
+COPY supervisord.render2.conf /etc/supervisor/conf.d/supervisord.conf
+COPY nginx.render2.conf /etc/nginx/nginx.conf
+COPY entrypoint.render2.sh /app/entrypoint.render2.sh
+
+RUN chmod +x /app/entrypoint.render2.sh
+
+EXPOSE 8000 10000
+
+CMD ["/bin/bash", "/app/entrypoint.render2.sh"]
