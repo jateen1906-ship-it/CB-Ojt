@@ -11,13 +11,24 @@ from app.core.database import get_db_session
 from app.core.dependencies import require_authenticated, require_owner_or_admin
 from app.core.security import AuthenticatedUser
 from app.schemas.payment import (
+    AutoReleaseExecutionRequest,
+    AutoReleaseExecutionResponse,
     CreateEscrowRequest,
+    DeveloperTdsSummaryResponse,
     EscrowActionRequest,
     EscrowListResponse,
     EscrowPaymentResponse,
     EscrowTransactionResponse,
     FundEscrowRequest,
+    MilestoneOrderCreateRequest,
+    MilestoneOrderResponse,
+    MilestoneRefundRequest,
+    MilestoneRefundResponse,
+    MilestoneReleaseResponse,
+    MilestoneVerifyRequest,
+    MilestoneVerifyResponse,
     RefundEscrowRequest,
+    WebhookResponse,
 )
 from app.services.payment_service import PaymentService
 
@@ -30,6 +41,7 @@ def _service(request: Request, session: AsyncSession) -> PaymentService:
         project_client=request.app.state.project_client,
         review_client=request.app.state.review_client,
         telemetry_client=request.app.state.telemetry_client,
+        razorpay_client=getattr(request.app.state, "razorpay_client", None),
     )
 
 
@@ -234,4 +246,168 @@ async def get_task_escrow_status(
         "currency": "USD",
         "fundedAt": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.post(
+    "/orders",
+    response_model=MilestoneOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a funded milestone order via Razorpay Route",
+)
+@router.post(
+    "/milestones/orders",
+    response_model=MilestoneOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+async def create_milestone_order(
+    payload: MilestoneOrderCreateRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> MilestoneOrderResponse:
+    """Create a funded milestone order via Razorpay Route with transfers on-hold."""
+    return await _service(request, session).create_milestone_order(
+        payload=payload,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post(
+    "/verify",
+    response_model=MilestoneVerifyResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify HMAC-SHA256 signature from Razorpay modal and lock in escrow",
+)
+@router.post(
+    "/milestones/verify",
+    response_model=MilestoneVerifyResponse,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
+async def verify_milestone_payment(
+    payload: MilestoneVerifyRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> MilestoneVerifyResponse:
+    """Verify HMAC signature from Razorpay checkout modal and lock funds in RBI Nodal Escrow."""
+    return await _service(request, session).verify_milestone_payment(
+        payload=payload,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.patch(
+    "/transfers/{identifier}/release",
+    response_model=MilestoneReleaseResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Lift nodal hold on Razorpay Route transfer and trigger instant IMPS/UPI payout",
+)
+@router.post(
+    "/settle",
+    response_model=MilestoneReleaseResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Settle milestone escrow payout alias",
+    include_in_schema=False,
+)
+async def release_milestone_transfer(
+    identifier: str,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> MilestoneReleaseResponse:
+    """Lift nodal hold on Razorpay Route transfer, deduct Section 194-O TDS if applicable, and credit developer instantly."""
+    return await _service(request, session).release_milestone_payout(
+        identifier=identifier,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post(
+    "/transfers/{identifier}/refund",
+    response_model=MilestoneRefundResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reverse held milestone funds back to client's original UPI/card source",
+)
+async def refund_milestone_transfer(
+    identifier: str,
+    payload: MilestoneRefundRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> MilestoneRefundResponse:
+    """Reverse held funds back to client's original UPI/card source."""
+    return await _service(request, session).refund_milestone_escrow(
+        identifier=identifier,
+        payload=payload,
+        user=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.post(
+    "/webhook",
+    response_model=WebhookResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ingest and reconcile Razorpay webhooks (payment.captured, transfer.processed, etc.)",
+)
+async def razorpay_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+) -> WebhookResponse:
+    """Ingest Razorpay webhooks, verify cryptographic HMAC signature, and reconcile escrow states."""
+    sig = request.headers.get("X-Razorpay-Signature", "")
+    raw_body = await request.body()
+    return await _service(request, session).process_razorpay_webhook(
+        raw_body=raw_body,
+        signature=sig,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+@router.get(
+    "/developers/{developer_id}/tds",
+    response_model=DeveloperTdsSummaryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get cumulative Section 194-O TDS standing for a developer",
+)
+async def get_developer_tds(
+    developer_id: uuid.UUID,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> DeveloperTdsSummaryResponse:
+    """Inspect cumulative annual Section 194-O TDS compliance and deductions."""
+    return await _service(request, session).get_developer_tds_summary(
+        developer_id=developer_id,
+    )
+
+
+@router.post(
+    "/transfers/{identifier}/auto-release",
+    response_model=AutoReleaseExecutionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Trigger AI-guarded 5-day auto-release for an escrow milestone",
+)
+async def auto_release_milestone_transfer(
+    identifier: str,
+    payload: AutoReleaseExecutionRequest,
+    request: Request,
+    user: AuthenticatedUser = Depends(require_authenticated),
+    session: AsyncSession = Depends(get_db_session),
+) -> AutoReleaseExecutionResponse:
+    """Evaluate and trigger AI-guarded auto-release when client is unresponsive."""
+    return await _service(request, session).execute_ai_guarded_auto_release(
+        identifier=identifier,
+        payload=payload,
+        actor=user,
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+
 

@@ -273,3 +273,42 @@ When instructed to implement this architecture:
    - Compute aggregate score: `CI_Status + AI_Score`.
 4. **`api-gateway`**:
    - Forward `/api/v1/payments/*` to `payment-service:8008`.
+
+---
+
+## 9. Enterprise Observability, Monitoring & AI Tracing Architecture
+
+To provide complete operational intelligence and auditability for project owners and administrators:
+1. **Prometheus Metrics Engine**:
+   - Scrapes `/api/v1/observability/prometheus` every 10 seconds.
+   - Tracks real-time throughput (`http_requests_total`), latency histograms (`http_request_duration_seconds`), AI PR audit outcomes (`ai_pr_audit_total`), and LangGraph step timings (`langgraph_step_latency_seconds`).
+2. **Grafana 10.4 Visualization Dashboards**:
+   - **Platform Analytics**: Connects directly to Neon PostgreSQL cloud databases to chart live revenue, active escrow balances, and user growth.
+   - **AI Observability**: Displays live pass/fail PR ratios, LangGraph node step latencies, and token consumption with 10-second auto-refresh.
+3. **LangSmith Traceability**:
+   - Captures end-to-end LLM prompts, input/output tokens, Gemini reasoning, and step decisions.
+   - Enables dispute resolution by providing immutable forensic records of why code passed or failed requirements.
+4. **LangGraph 4-Stage State Graph**:
+   - Orchestrates `ast_sanitizer` -> `security_and_hollow_scanner` -> `rag_requirement_matcher` -> `verdict_arbiter`.
+   - Evaluates syntactic validity, secret leaks, requirement coverage, and milestone settlement recommendations deterministically.
+
+---
+
+## 10. Edge Load Balancing, High Availability & Blast-Radius Containment
+
+1. **NGINX Edge Load Balancer**:
+   - Algorithm: `least_conn` with 8,192 worker connections and dynamic DNS resolution.
+   - Traffic Shaping: 150 requests/sec DDoS protection for general API; 25 requests/sec burst protection for auth routes.
+   - Instant Failover: Automatically retries on HTTP 502/503/504 errors up to 3 times before returning any error to clients.
+2. **Dual Active-Active API Gateways**:
+   - Redundant instances (`api-gateway` on port 8081, `api-gateway-replica` on port 8082).
+   - Dedicated `/lb-health`, `/health/live`, and `/health/ready` Kubernetes-grade probes.
+3. **Per-Service Circuit Breakers**:
+   - Independent state machines (`CLOSED`, `OPEN`, `HALF_OPEN`) per microservice.
+   - A failure in one service (e.g. GitHub API) trips only that service, allowing other services (Payments, Projects, Identity) to continue operating at full speed.
+   - 10-second automatic canary recovery without service restarts.
+4. **OWASP Enterprise Security Headers**:
+   - Injected across both edge and gateway layers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `HSTS`, `Referrer-Policy`).
+5. **Comprehensive HTTP Status Code Catalog**:
+   - Full coverage from 400 to 505 with instant diagnostic response headers (`X-Error-Code`, `X-Status-Code`, `X-Request-ID`).
+   - Absolute crash-proof exception handling ensuring zero server downtime.

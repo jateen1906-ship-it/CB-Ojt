@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, status
 
 from app.core.dependencies import AuthContext, require_any_authenticated
+from app.schemas.ai_audit import AuditPRRequest, AuditReportCard
 
 router = APIRouter(prefix="/ai", tags=["AI Context"])
 
@@ -57,3 +58,23 @@ async def get_ai_context(
             "4. Verify health and test suites pass completely.",
         ],
     }
+
+
+@router.post(
+    "/audit-pr",
+    response_model=AuditReportCard,
+    status_code=status.HTTP_200_OK,
+    summary="Forensic AI audit of Git PR diff against PRD requirements",
+)
+async def audit_pr(
+    payload: AuditPRRequest,
+    request: Request,
+    auth_ctx: AuthContext = Depends(require_any_authenticated),
+) -> AuditReportCard:
+    """Evaluate a PR solution using dual-channel AST sanitization and forensic verification."""
+    audit_service = getattr(request.app.state, "pr_audit_service", None)
+    if audit_service is None:
+        from app.services.pr_audit_service import PRAuditService
+        audit_service = PRAuditService(request.app.state.settings)
+    return await audit_service.audit_pr(payload)
+

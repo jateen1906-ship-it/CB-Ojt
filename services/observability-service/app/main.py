@@ -61,6 +61,22 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
             response = await call_next(request)
             response.headers["X-Request-ID"] = request_id
             duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            try:
+                from app.core.prometheus import HTTP_REQUEST_DURATION_SECONDS, HTTP_REQUESTS_TOTAL
+
+                HTTP_REQUESTS_TOTAL.labels(
+                    service="observability-service",
+                    method=request.method,
+                    endpoint=request.url.path,
+                    status_code=str(response.status_code),
+                ).inc()
+                HTTP_REQUEST_DURATION_SECONDS.labels(
+                    service="observability-service",
+                    method=request.method,
+                    endpoint=request.url.path,
+                ).observe(duration_ms / 1000.0)
+            except Exception:
+                pass
             logger.info(
                 "HTTP request completed",
                 extra={

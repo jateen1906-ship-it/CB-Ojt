@@ -158,3 +158,8 @@ class ProjectRepository:
         rows = list((await self.session.execute(paged_stmt)).scalars().all())
         return rows, total
 
+    async def delete(self, project: Project) -> None:
+        """Delete a project and its requirement (cascade via ORM relationship)."""
+        await self.session.delete(project)
+        await self.session.flush()
+

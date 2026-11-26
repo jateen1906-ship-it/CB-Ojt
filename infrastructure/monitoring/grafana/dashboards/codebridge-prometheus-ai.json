@@ -1,0 +1,199 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 200,
+      "title": "Prometheus & Microservice Telemetry",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisCenteredZero": false, "drawStyle": "line", "lineInterpolation": "smooth" }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 201,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "title": "HTTP Request Throughput (req/sec)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(codebridge_http_requests_total[1m])) by (service, status_code)",
+          "legendFormat": "{{service}} [{{status_code}}]",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth" }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 202,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "title": "p95 HTTP Request Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(codebridge_http_request_duration_seconds_bucket[1m])) by (le, service))",
+          "legendFormat": "{{service}} p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 300,
+      "title": "AI Audit, AST Sanitizer & LangSmith Observability",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 10 },
+      "id": 301,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }
+      },
+      "title": "AI PR Audits Completed",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(codebridge_ai_audit_requests_total)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 10 },
+      "id": 302,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }
+      },
+      "title": "Intercepted Security Vulns",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(codebridge_ai_security_vulnerabilities_total) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 10 },
+      "id": 303,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false }
+      },
+      "title": "Hollow Mock Code Blocked",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(codebridge_ai_hollow_mock_detected_total) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "CodeBridge-Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 80 }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 10 },
+      "id": 304,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "title": "AI Audit Decisions",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(codebridge_ai_audit_requests_total) by (recommendation)",
+          "legendFormat": "{{recommendation}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["codebridge", "prometheus", "langsmith", "observability"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "CodeBridge Prometheus & AI Telemetry",
+  "uid": "codebridge-prometheus-ai",
+  "version": 1
+}

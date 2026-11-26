@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     IDENTITY_SERVICE_URL: str = "http://localhost:8001"
     PROJECT_SERVICE_URL: str = "http://localhost:8002"
     GITHUB_SERVICE_URL: str = "http://localhost:8003"
+    OBSERVABILITY_SERVICE_URL: str = "http://localhost:8012"
     SERVICE_CLIENT_TIMEOUT_SECONDS: float = Field(default=10.0, gt=0.0, le=60.0)
 
     # ChromaDB vector store settings
@@ -74,20 +75,34 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = Field(default=64, ge=8, le=4096)
 
     # Configurable LLM Provider
-    LLM_PROVIDER: Literal["openai", "ollama", "mock", "none"] = "none"
-    LLM_MODEL: str = "gpt-4o-mini"
-    LLM_API_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_PROVIDER: Literal["gemini", "openai", "ollama", "mock", "none"] = "gemini"
+    LLM_MODEL: str = "gemini-1.5-pro"
+    LLM_API_BASE_URL: str = "https://generativelanguage.googleapis.com"
     LLM_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
     LLM_TIMEOUT_SECONDS: float = Field(default=25.0, gt=0.0, le=120.0)
     LLM_TEMPERATURE: float = Field(default=0.1, ge=0.0, le=1.0)
     LLM_MAX_TOKENS: int = Field(default=900, ge=64, le=4096)
     LLM_FALLBACK_ON_ERROR: bool = True
+
+    # LangSmith & LLM Observability
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: str | None = None
+    LANGSMITH_PROJECT: str = "codebridge-pr-auditor"
 
     # Chunking and RAG retrieval settings
     CHUNK_SIZE: int = Field(default=1200, ge=100, le=8000)
     CHUNK_OVERLAP: int = Field(default=200, ge=0, le=2000)
     TOP_K_DEFAULT: int = Field(default=5, ge=1, le=50)
     TOP_K_MAX: int = Field(default=15, ge=1, le=50)
+
+    # LangSmith LLM Observability & Tracing settings
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: str | None = None
+    LANGSMITH_PROJECT: str = "codebridge-ai-audit"
+    OBSERVABILITY_SERVICE_URL: str = "http://localhost:8012"
 
     # Bounded repository ingestion limits
     MAX_FILES_PER_INDEX: int = Field(default=250, ge=1, le=5000)

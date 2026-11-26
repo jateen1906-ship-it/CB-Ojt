@@ -20,30 +20,58 @@ from app.schemas.user import UserPublicResponse
 class RegisterRequest(BaseModel):
     """Public account registration payload (OWNER or FREELANCER only)."""
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    full_name: str = Field(..., min_length=2, max_length=120, examples=["Demo User"])
+    full_name: str = Field(..., min_length=1, max_length=120, examples=["Demo User"])
     email: EmailStr = Field(..., examples=["demo@example.com"])
-    password: str = Field(..., min_length=8, max_length=128, examples=["StrongPassword123!"])
+    password: str = Field(..., min_length=4, max_length=128, examples=["StrongPassword123!"])
     role: UserRole = Field(default=UserRole.FREELANCER, examples=[UserRole.FREELANCER])
 
     @model_validator(mode="before")
     @classmethod
     def _preprocess_fields(cls, data: object) -> object:
         if isinstance(data, dict):
-            # Support 'displayName', 'name' or 'username' if 'full_name' is missing
+            # Security check: reject privilege-escalation flags (like is_verified, is_admin)
+            forbidden_flags = {"is_verified", "is_admin", "is_superuser", "is_staff", "permissions"}
+            for flag in forbidden_flags:
+                if flag in data:
+                    raise ValueError(f"Extra flag field '{flag}' is forbidden.")
+
+            # Support alternative display name / full name fields
             if "full_name" not in data or not str(data["full_name"]).strip():
-                if "displayName" in data and str(data["displayName"]).strip():
-                    data["full_name"] = data["displayName"]
-                elif "name" in data and str(data["name"]).strip():
-                    data["full_name"] = data["name"]
-                elif "username" in data and str(data["username"]).strip():
-                    data["full_name"] = data["username"]
-            # Support case-insensitive role string
-            if "role" in data and isinstance(data["role"], str):
-                role_upper = data["role"].strip().upper()
-                if role_upper in {"OWNER", "FREELANCER", "ADMIN"}:
-                    data["role"] = role_upper
+                for alt_key in ("displayName", "display_name", "fullName", "name", "username"):
+                    if alt_key in data and str(data[alt_key]).strip():
+                        data["full_name"] = str(data[alt_key]).strip()
+                        break
+
+            # Strip benign frontend UI fields so extra="forbid" doesn't reject standard form inputs
+            for benign_key in (
+                "displayName",
+                "display_name",
+                "fullName",
+                "confirmPassword",
+                "confirm_password",
+                "confirm",
+                "password_confirmation",
+                "terms",
+                "agreedToTerms",
+                "termsAccepted",
+                "acceptTerms",
+                "step",
+                "title",
+                "bio",
+            ):
+                data.pop(benign_key, None)
+
+            # Support and normalize case-insensitive and UI role aliases
+            if "role" in data:
+                raw_role = str(data["role"]).strip().upper().replace(" ", "_").replace("-", "_").replace("/", "_")
+                if raw_role in {"OWNER", "PROJECT_OWNER", "PROJECTOWNER", "CLIENT", "1"}:
+                    data["role"] = "OWNER"
+                elif raw_role in {"FREELANCER", "DEVELOPER", "FREELANCER_DEVELOPER", "DEV", "TALENT", "2"}:
+                    data["role"] = "FREELANCER"
+                elif raw_role in {"ADMIN"}:
+                    data["role"] = "ADMIN"
         return data
 
     @field_validator("full_name")
@@ -62,14 +90,8 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def _validate_password_strength(cls, value: str) -> str:
-        has_upper = any(ch.isupper() for ch in value)
-        has_lower = any(ch.islower() for ch in value)
-        has_digit = any(ch.isdigit() for ch in value)
-        has_special = any(not ch.isalnum() for ch in value)
-        if not (has_upper and has_lower and has_digit and has_special):
-            raise ValueError(
-                "Password must contain uppercase, lowercase, numeric, and special characters."
-            )
+        if len(value) < 6:
+            raise ValueError("Password must be at least 6 characters.")
         return value
 
 

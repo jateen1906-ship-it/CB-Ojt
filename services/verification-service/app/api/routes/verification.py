@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import uuid
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.core.dependencies import require_authenticated, require_owner_or_admin
 from app.core.security import AuthenticatedUser
 from app.schemas.verification import (
+    CIWorkflowRunResponse,
     CreateVerificationRequest,
     FreelancerVerificationListResponse,
+    GitHubWorkflowRunWebhookPayload,
     MyVerifiedWorkListResponse,
+    PayRailAutoReleaseCheckRequest,
+    PayRailAutoReleaseCheckResponse,
     ProjectVerificationListResponse,
     PublicVerificationResponse,
     RevokeVerificationRequest,
@@ -136,4 +142,61 @@ async def revoke_verification_record(
         actor=actor,
         request_id=getattr(request.state, "request_id", None),
     )
+
+
+@router.post(
+    "/webhooks/github/workflow-run",
+    response_model=CIWorkflowRunResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Receive GitHub Actions workflow_run webhook event with HMAC verification",
+)
+async def github_workflow_run_webhook(
+    request: Request,
+    payload: GitHubWorkflowRunWebhookPayload,
+    x_hub_signature_256: str | None = Header(default=None, alias="X-Hub-Signature-256"),
+    session: AsyncSession = Depends(get_db_session),
+) -> CIWorkflowRunResponse:
+    secret = request.app.state.settings.GITHUB_WEBHOOK_SECRET
+    # Validate HMAC signature if header provided or in strict mode
+    body_bytes = await request.body()
+    if x_hub_signature_256:
+        expected_sig = "sha256=" + hmac.new(
+            secret.encode("utf-8"),
+            body_bytes,
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(x_hub_signature_256, expected_sig):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid GitHub webhook signature.",
+            )
+
+    service = _service(request, session)
+    ci_run = await service.record_github_workflow_run(payload=payload.model_dump())
+    return CIWorkflowRunResponse.model_validate(ci_run)
+
+
+@router.post(
+    "/payrail/auto-release-check",
+    response_model=PayRailAutoReleaseCheckResponse,
+    summary="Evaluate if a milestone qualifies for 5-Day Auto-Release Guard",
+)
+async def check_payrail_auto_release(
+    payload: PayRailAutoReleaseCheckRequest,
+    request: Request,
+    ai_audit_score: int | None = None,
+    ai_recommendation: str | None = None,
+    hollow_mock_code_detected: bool = False,
+    security_vulnerabilities_count: int = 0,
+    session: AsyncSession = Depends(get_db_session),
+) -> PayRailAutoReleaseCheckResponse:
+    service = _service(request, session)
+    return await service.evaluate_payrail_auto_release(
+        request_data=payload,
+        ai_audit_score=ai_audit_score,
+        ai_recommendation=ai_recommendation,
+        hollow_mock_code_detected=hollow_mock_code_detected,
+        security_vulnerabilities_count=security_vulnerabilities_count,
+    )
+
 

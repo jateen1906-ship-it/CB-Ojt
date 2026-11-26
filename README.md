@@ -64,6 +64,7 @@ docker compose up --build
 ## Documentation
 
 - [Architecture Overview](docs/architecture.md)
+- [Load Balancing & High Availability](docs/load-balancing.md)
 - [Service Responsibilities](docs/services.md)
 - [Inter-Service Communication](docs/communication.md)
 - [Database Design](docs/database-design.md)

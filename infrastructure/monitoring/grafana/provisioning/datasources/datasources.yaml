@@ -52,3 +52,14 @@ datasources:
       connMaxLifetime: 14400
       postgresVersion: 1600
     editable: true
+
+  - name: Prometheus
+    uid: CodeBridge-Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s

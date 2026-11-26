@@ -274,6 +274,35 @@ async def cancel_project(
     return await service.cancel_project(project_id=project_id, owner=current_owner)
 
 
+@router.delete(
+    "/{project_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently delete an unassigned OPEN/CANCELLED project (OWNER only)",
+    description=(
+        "Permanently removes the project and its requirement. Only allowed for unassigned "
+        "projects in OPEN or CANCELLED status. "
+        "Authentication: Bearer access JWT. Role required: OWNER (must own project)."
+    ),
+    responses={
+        204: {"description": "Project deleted successfully."},
+        401: {"model": ErrorResponse, "description": "Unauthorized."},
+        403: {"model": ErrorResponse, "description": "Forbidden."},
+        404: {"model": ErrorResponse, "description": "Project not found."},
+        409: {"model": ErrorResponse, "description": "Project cannot be deleted in current state."},
+        503: {"model": ErrorResponse, "description": "Identity Service unavailable."},
+    },
+)
+async def delete_project(
+    project_id: uuid.UUID,
+    current_owner: AuthenticatedUser = Depends(require_owner),
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    service = ProjectService(session, settings)
+    await service.delete_project(project_id=project_id, owner=current_owner)
+    return None
+
+
 @router.post(
     "/{project_id}/workflow/transition",
     response_model=ProjectResponse,

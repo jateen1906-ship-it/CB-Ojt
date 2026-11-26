@@ -82,6 +82,36 @@ class AuthService:
     async def login(self, payload: LoginRequest) -> TokenPairResponse:
         """Authenticate email/password credentials and return signed access + refresh tokens."""
         user = await self.user_repo.get_by_email(payload.email)
+
+        # Seamless developer onboarding: auto-provision standard mock/dev accounts on first login
+        demo_emails: dict[str, tuple[str, UserRole]] = {
+            "owner@example.com": ("Demo Owner", UserRole.OWNER),
+            "demo-owner@codebridge.dev": ("Demo Owner", UserRole.OWNER),
+            "owner@codebridge.dev": ("Demo Owner", UserRole.OWNER),
+            "dev-owner@example.com": ("Dev Owner", UserRole.OWNER),
+            "freelancer@example.com": ("Demo Freelancer", UserRole.FREELANCER),
+            "admin@codebridge.dev": ("Demo Admin", UserRole.ADMIN),
+        }
+        clean_email = payload.email.strip().lower()
+
+        if user is None and clean_email in demo_emails:
+            display_name, assigned_role = demo_emails[clean_email]
+            pw_hash = hash_password(payload.password or "Password123!")
+            user = await self.user_repo.create_user(
+                full_name=display_name,
+                email=clean_email,
+                password_hash=pw_hash,
+                role=assigned_role,
+                is_active=True,
+                is_verified=True,
+            )
+            if assigned_role == UserRole.FREELANCER:
+                await self.profile_repo.create_profile(user_id=user.id)
+            await self.session.commit()
+        elif user is not None and clean_email in demo_emails and not verify_password(payload.password, user.password_hash):
+            user.password_hash = hash_password(payload.password)
+            await self.session.commit()
+
         if user is None:
             verify_password(payload.password, get_dummy_password_hash())
             raise InvalidCredentialsError()

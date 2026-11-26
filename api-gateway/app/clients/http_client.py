@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from app.clients.circuit_breaker import CircuitBreakerRegistry
 from app.config import Settings
 from app.core.exceptions import (
     ServiceConfigurationError,
@@ -16,21 +17,28 @@ logger = get_logger("clients.http_client")
 
 
 class GatewayHTTPClient:
-    """Manages a single reusable httpx.AsyncClient across the Gateway lifecycle."""
+    """Manages a single reusable httpx.AsyncClient with circuit breaking across the Gateway lifecycle."""
 
     def __init__(
         self,
         settings: Settings,
         transport: httpx.AsyncBaseTransport | None = None,
+        circuit_breakers: CircuitBreakerRegistry | None = None,
     ) -> None:
         self._settings = settings
         self._transport = transport
         self._client: httpx.AsyncClient | None = None
+        self._circuit_breakers = circuit_breakers or CircuitBreakerRegistry()
 
     @property
     def is_open(self) -> bool:
         """Return True when the underlying AsyncClient is initialized and open."""
         return self._client is not None and not self._client.is_closed
+
+    @property
+    def circuit_breakers(self) -> CircuitBreakerRegistry:
+        """Access the circuit breaker registry for monitoring and stats."""
+        return self._circuit_breakers
 
     async def startup(self) -> None:
         """Initialize the reusable AsyncClient during FastAPI lifespan startup."""
@@ -87,6 +95,9 @@ class GatewayHTTPClient:
         if not self.is_open or self._client is None:
             raise ServiceConfigurationError()
 
+        # Fail-fast if downstream circuit breaker is currently OPEN
+        self._circuit_breakers.check_and_execute(service_name)
+
         request_timeout = (
             httpx.Timeout(
                 timeout=timeout_seconds,
@@ -97,7 +108,7 @@ class GatewayHTTPClient:
         )
 
         try:
-            return await self._client.request(
+            response = await self._client.request(
                 method=method,
                 url=url,
                 params=tuple(params) if params else None,
@@ -105,7 +116,13 @@ class GatewayHTTPClient:
                 headers=headers,
                 timeout=request_timeout,
             )
+            if response.status_code >= 500:
+                self._circuit_breakers.get_breaker(service_name).record_failure()
+            else:
+                self._circuit_breakers.get_breaker(service_name).record_success()
+            return response
         except httpx.TimeoutException as exc:
+            self._circuit_breakers.get_breaker(service_name).record_failure()
             logger.warning(
                 "Downstream request timed out",
                 extra={
@@ -116,6 +133,7 @@ class GatewayHTTPClient:
             )
             raise ServiceTimeoutError() from exc
         except httpx.ConnectError as exc:
+            self._circuit_breakers.get_breaker(service_name).record_failure()
             logger.error(
                 "Downstream service connection failed",
                 extra={
@@ -126,6 +144,7 @@ class GatewayHTTPClient:
             )
             raise ServiceUnavailableError() from exc
         except httpx.HTTPError as exc:
+            self._circuit_breakers.get_breaker(service_name).record_failure()
             logger.error(
                 "Downstream HTTP transport error",
                 extra={

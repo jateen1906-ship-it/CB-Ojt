@@ -79,6 +79,26 @@ class VerifiedWorkRecord(Base):
     )
 
 
+class CIWorkflowRun(Base):
+    """Immutable log of GitHub Actions CI workflow runs for automated verification."""
+
+    __tablename__ = "ci_workflow_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    repository_full_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    workflow_id: Mapped[int] = mapped_column(nullable=False)
+    run_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    head_sha: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    head_branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(48), nullable=False)  # completed, in_progress, etc.
+    conclusion: Mapped[str | None] = mapped_column(String(48), nullable=True)  # success, failure, cancelled
+    event: Mapped[str] = mapped_column(String(48), nullable=False, default="workflow_run")
+    pr_number: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    raw_payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class VerificationEvent(Base):
     """Immutable audit log of verification record issuance and revocation."""
 

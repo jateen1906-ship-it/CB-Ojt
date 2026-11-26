@@ -241,7 +241,11 @@ class ProjectService:
         if project.owner_id != owner.id:
             raise ForbiddenError("Only the project owner may cancel this project.")
 
-        active_assignment = await self.assignment_repo.get_active_by_project_id(project.id)
+        active_assignment = self._find_active_assignment(project)
+
+        if project.status == ProjectStatus.CANCELLED:
+            return self._to_project_response(project, viewer=owner)
+
         self.state_service.validate_cancel(
             project,
             has_active_assignment=active_assignment is not None,
@@ -265,6 +269,45 @@ class ProjectService:
             },
         )
         return self._to_project_response(cancelled, viewer=owner)
+
+    async def delete_project(
+        self,
+        *,
+        project_id: uuid.UUID,
+        owner: AuthenticatedUser,
+    ) -> None:
+        """Permanently delete an unassigned OPEN/CANCELLED project owned by the caller."""
+        if owner.role != UserRole.OWNER:
+            raise ForbiddenError("Only OWNER accounts may delete projects.")
+
+        project = await self.project_repo.get_by_id(project_id, include_relations=True)
+        if project is None:
+            raise ProjectNotFoundError()
+
+        if project.owner_id != owner.id:
+            raise ForbiddenError("Only the project owner may delete this project.")
+
+        active_assignment = self._find_active_assignment(project)
+        if active_assignment is not None:
+            raise InvalidProjectStatusError("Cannot delete a project with an active assignment.")
+
+        if project.status not in (ProjectStatus.OPEN, ProjectStatus.CANCELLED):
+            raise InvalidProjectStatusError(
+                f"Cannot delete a project in {project.status.value} status."
+            )
+
+        await self.project_repo.delete(project)
+        await self.session.commit()
+
+        logger.info(
+            "Project deleted",
+            extra={
+                "event": "project_deleted",
+                "user_id": str(owner.id),
+                "role": owner.role.value,
+                "project_id": str(project_id),
+            },
+        )
 
     async def start_work(
         self,

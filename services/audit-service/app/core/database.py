@@ -30,6 +30,7 @@ def build_async_engine(settings: Settings) -> AsyncEngine:
         echo=settings.DB_ECHO,
         pool_size=settings.DATABASE_POOL_SIZE,
         max_overflow=settings.DATABASE_MAX_OVERFLOW,
+        pool_recycle=300,
         pool_pre_ping=True,
         future=True,
     )

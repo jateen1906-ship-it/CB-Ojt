@@ -206,6 +206,18 @@ def register_exception_handlers(app: FastAPI) -> None:
             message = f"{field_prefix}{raw_msg}"[:250]
         else:
             message = "Request validation failed."
+
+        logger.warning(
+            "Validation error on %s: %s (first_err: %s)",
+            request.url.path,
+            exc.errors(),
+            message,
+            extra={
+                "event": "request_validation_error",
+                "request_id": request_id,
+                "validation_errors": str(exc.errors()),
+            },
+        )
         return build_error_response(
             status_code=_HTTP_422_STATUS,
             error_code="VALIDATION_ERROR",

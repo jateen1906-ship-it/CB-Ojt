@@ -61,7 +61,14 @@ class Settings(BaseSettings):
     AUDIT_SERVICE_URL: str = "http://localhost:8011"
     SERVICE_CLIENT_TIMEOUT_SECONDS: float = Field(default=10.0, gt=0.0, le=60.0)
     INTERNAL_SERVICE_KEY: str = _DEV_INTERNAL_KEY
-    PAYMENT_PROVIDER_MODE: Literal["simulated"] = "simulated"
+    PAYMENT_PROVIDER_MODE: Literal["simulated", "razorpay"] = "razorpay"
+
+    # Razorpay Route & Sovereign PayRail Configuration
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAYX_ACCOUNT_NUMBER: str = ""
+    RAZORPAY_MOCK_MODE: bool = True
 
     @field_validator("DEBUG", mode="before")
     @classmethod

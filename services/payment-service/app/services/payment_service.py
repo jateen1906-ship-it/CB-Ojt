@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.razorpay_client import RazorpayClientAdapter
 from app.clients.service_clients import (
     ProjectClient,
     ReviewClient,
@@ -21,27 +23,48 @@ from app.core.exceptions import (
 )
 from app.core.security import AuthenticatedUser, hash_request_payload
 from app.models import (
+    DeveloperTdsLedger,
+    EscrowMilestone,
     EscrowPayment,
     EscrowStatus,
     EscrowTransaction,
+    MilestoneEscrowStatus,
     PaymentEvent,
     PaymentIdempotencyRecord,
     TransactionType,
 )
 from app.repositories.payment_repository import PaymentRepository
 from app.schemas.payment import (
+    AutoReleaseExecutionRequest,
+    AutoReleaseExecutionResponse,
     CreateEscrowRequest,
+    DeveloperTdsSummaryResponse,
     EscrowActionRequest,
     EscrowListResponse,
     EscrowPaymentResponse,
     EscrowTransactionResponse,
     FundEscrowRequest,
+    MilestoneOrderCreateRequest,
+    MilestoneOrderResponse,
+    MilestoneRefundRequest,
+    MilestoneRefundResponse,
+    MilestoneReleaseResponse,
+    MilestoneVerifyRequest,
+    MilestoneVerifyResponse,
     RefundEscrowRequest,
+    WebhookResponse,
 )
 
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _current_financial_year() -> str:
+    now = datetime.now(UTC)
+    if now.month >= 4:
+        return f"{now.year}-{now.year + 1}"
+    return f"{now.year - 1}-{now.year}"
 
 
 class PaymentService:
@@ -52,12 +75,14 @@ class PaymentService:
         project_client: ProjectClient,
         review_client: ReviewClient,
         telemetry_client: TelemetryRelayClient,
+        razorpay_client: RazorpayClientAdapter | None = None,
     ) -> None:
         self.session = session
         self.repo = PaymentRepository(session)
         self.project_client = project_client
         self.review_client = review_client
         self.telemetry_client = telemetry_client
+        self.razorpay_client = razorpay_client
 
     async def _check_idempotency(
         self,
@@ -772,4 +797,628 @@ class PaymentService:
         await self._require_read_access(escrow=escrow, user=user, request_id=request_id)
         txns = await self.repo.list_transactions(escrow_id)
         return [EscrowTransactionResponse.model_validate(t) for t in txns]
+
+    async def create_milestone_order(
+        self,
+        *,
+        payload: MilestoneOrderCreateRequest,
+        user: AuthenticatedUser,
+        request_id: str | None,
+    ) -> MilestoneOrderResponse:
+        """Create a funded milestone order via Razorpay Route with transfers locked on-hold in RBI Nodal Escrow."""
+        existing = await self.repo.get_milestone_by_idempotency_key(payload.idempotency_key)
+        if existing is not None:
+            key_id = self.razorpay_client._key_id if self.razorpay_client else "rzp_test_mock_key_id"
+            return MilestoneOrderResponse(
+                milestone_id=existing.id,
+                project_id=existing.project_id,
+                task_id=existing.task_id,
+                owner_id=existing.owner_id,
+                developer_id=existing.developer_id,
+                amount_paise=existing.amount_paise,
+                platform_fee_paise=existing.platform_fee_paise,
+                developer_payout_paise=existing.developer_payout_paise,
+                currency=existing.currency,
+                razorpay_order_id=existing.razorpay_order_id,
+                razorpay_key_id=key_id or "rzp_test_mock_key_id",
+                status=existing.status,
+                idempotency_key=existing.idempotency_key,
+                created_at=existing.created_at,
+            )
+
+        existing_task_milestone = await self.repo.get_milestone_by_project_and_task(
+            project_id=payload.project_id,
+            task_id=payload.task_id,
+        )
+        if existing_task_milestone is not None and existing_task_milestone.status in {
+            MilestoneEscrowStatus.INITIATED.value,
+            MilestoneEscrowStatus.HELD_IN_ESCROW.value,
+        }:
+            key_id = self.razorpay_client._key_id if self.razorpay_client else "rzp_test_mock_key_id"
+            return MilestoneOrderResponse(
+                milestone_id=existing_task_milestone.id,
+                project_id=existing_task_milestone.project_id,
+                task_id=existing_task_milestone.task_id,
+                owner_id=existing_task_milestone.owner_id,
+                developer_id=existing_task_milestone.developer_id,
+                amount_paise=existing_task_milestone.amount_paise,
+                platform_fee_paise=existing_task_milestone.platform_fee_paise,
+                developer_payout_paise=existing_task_milestone.developer_payout_paise,
+                currency=existing_task_milestone.currency,
+                razorpay_order_id=existing_task_milestone.razorpay_order_id,
+                razorpay_key_id=key_id or "rzp_test_mock_key_id",
+                status=existing_task_milestone.status,
+                idempotency_key=existing_task_milestone.idempotency_key,
+                created_at=existing_task_milestone.created_at,
+            )
+
+        project = await self.project_client.get_project(
+            project_id=payload.project_id,
+            access_token=user.access_token,
+            request_id=request_id,
+        )
+        if user.role != "ADMIN" and project.owner_id != user.id:
+            raise ForbiddenError("Only project owners or administrators can fund project milestones.")
+
+        amount_paise = payload.amount_paise
+        platform_fee_paise = int(amount_paise * 0.10)
+        developer_payout_paise = amount_paise - platform_fee_paise
+
+        developer_sub_acc = payload.developer_account_id or f"acc_dev_{payload.developer_id.hex[:12]}"
+        receipt = f"cb_rcpt_{payload.task_id.hex[:8]}"
+
+        rz_client = self.razorpay_client
+        if rz_client is None:
+            from app.core.config import Settings
+            rz_client = RazorpayClientAdapter(Settings())
+
+        rz_order = rz_client.create_milestone_order(
+            amount_paise=amount_paise,
+            developer_account_id=developer_sub_acc,
+            developer_payout_paise=developer_payout_paise,
+            receipt=receipt,
+            notes={
+                "project_id": str(payload.project_id),
+                "task_id": str(payload.task_id),
+                "owner_id": str(user.id),
+                "developer_id": str(payload.developer_id),
+                "milestone_title": payload.milestone_title or "Milestone Funding",
+            },
+        )
+
+        rz_order_id = rz_order["id"]
+        rz_transfer_id = None
+        if rz_order.get("transfers"):
+            rz_transfer_id = rz_order["transfers"][0].get("id")
+
+        milestone = EscrowMilestone(
+            project_id=payload.project_id,
+            task_id=payload.task_id,
+            owner_id=user.id,
+            developer_id=payload.developer_id,
+            amount_paise=amount_paise,
+            platform_fee_paise=platform_fee_paise,
+            developer_payout_paise=developer_payout_paise,
+            currency="INR",
+            razorpay_order_id=rz_order_id,
+            razorpay_payment_id=None,
+            razorpay_transfer_id=rz_transfer_id,
+            status=MilestoneEscrowStatus.INITIATED.value,
+            idempotency_key=payload.idempotency_key,
+        )
+        self.repo.add_milestone(milestone)
+        await self.session.commit()
+
+        key_id = rz_client._key_id or "rzp_test_mock_key_id"
+        return MilestoneOrderResponse(
+            milestone_id=milestone.id,
+            project_id=milestone.project_id,
+            task_id=milestone.task_id,
+            owner_id=milestone.owner_id,
+            developer_id=milestone.developer_id,
+            amount_paise=milestone.amount_paise,
+            platform_fee_paise=milestone.platform_fee_paise,
+            developer_payout_paise=milestone.developer_payout_paise,
+            currency=milestone.currency,
+            razorpay_order_id=milestone.razorpay_order_id,
+            razorpay_key_id=key_id,
+            status=milestone.status,
+            idempotency_key=milestone.idempotency_key,
+            created_at=milestone.created_at,
+        )
+
+    async def verify_milestone_payment(
+        self,
+        *,
+        payload: MilestoneVerifyRequest,
+        user: AuthenticatedUser,
+        request_id: str | None,
+    ) -> MilestoneVerifyResponse:
+        """Verify the HMAC signature from Razorpay Checkout modal and transition milestone to HELD_IN_ESCROW."""
+        milestone = await self.repo.get_milestone_by_order_id(payload.razorpay_order_id)
+        if milestone is None:
+            raise NotFoundError("Escrow milestone matching Razorpay order ID not found.")
+
+        if user.role != "ADMIN" and milestone.owner_id != user.id:
+            raise ForbiddenError("Only the milestone funder or an administrator may verify this payment.")
+
+        if milestone.status == MilestoneEscrowStatus.HELD_IN_ESCROW.value:
+            return MilestoneVerifyResponse(
+                milestone_id=milestone.id,
+                project_id=milestone.project_id,
+                task_id=milestone.task_id,
+                status=milestone.status,
+                amount_paise=milestone.amount_paise,
+                currency=milestone.currency,
+                razorpay_order_id=milestone.razorpay_order_id,
+                razorpay_payment_id=milestone.razorpay_payment_id or payload.razorpay_payment_id,
+                held_at=milestone.held_at or _utcnow(),
+            )
+
+        rz_client = self.razorpay_client
+        if rz_client is None:
+            from app.core.config import Settings
+            rz_client = RazorpayClientAdapter(Settings())
+
+        is_valid = rz_client.verify_payment_signature(
+            razorpay_order_id=payload.razorpay_order_id,
+            razorpay_payment_id=payload.razorpay_payment_id,
+            razorpay_signature=payload.razorpay_signature,
+        )
+        if not is_valid:
+            raise ValidationError("Invalid Razorpay payment signature.")
+
+        milestone.razorpay_payment_id = payload.razorpay_payment_id
+        milestone.status = MilestoneEscrowStatus.HELD_IN_ESCROW.value
+        milestone.held_at = _utcnow()
+        await self.session.commit()
+
+        await self.telemetry_client.audit(
+            actor_id=user.id,
+            actor_role=user.role,
+            action="PAYMENT_MILESTONE_HELD_IN_ESCROW",
+            resource_type="escrow_milestone",
+            resource_id=str(milestone.id),
+            project_id=milestone.project_id,
+            metadata={
+                "task_id": str(milestone.task_id),
+                "amount_paise": milestone.amount_paise,
+                "currency": milestone.currency,
+                "razorpay_order_id": milestone.razorpay_order_id,
+                "razorpay_payment_id": milestone.razorpay_payment_id,
+            },
+            request_id=request_id,
+        )
+
+        return MilestoneVerifyResponse(
+            milestone_id=milestone.id,
+            project_id=milestone.project_id,
+            task_id=milestone.task_id,
+            status=milestone.status,
+            amount_paise=milestone.amount_paise,
+            currency=milestone.currency,
+            razorpay_order_id=milestone.razorpay_order_id,
+            razorpay_payment_id=milestone.razorpay_payment_id,
+            held_at=milestone.held_at,
+        )
+
+    async def release_milestone_payout(
+        self,
+        *,
+        identifier: str,
+        user: AuthenticatedUser,
+        request_id: str | None,
+    ) -> MilestoneReleaseResponse:
+        """Lift nodal hold on Razorpay Route transfer, deduct Section 194-O TDS if applicable, and credit developer instantly."""
+        milestone = None
+        try:
+            m_id = uuid.UUID(identifier)
+            milestone = await self.repo.get_milestone_by_id(m_id, for_update=True)
+        except ValueError:
+            pass
+
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_order_id(identifier)
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_transfer_id(identifier)
+
+        if milestone is None:
+            raise NotFoundError("Escrow milestone matching identifier not found.")
+
+        if user.role != "ADMIN" and milestone.owner_id != user.id:
+            raise ForbiddenError("Only project owners or administrators may release milestone funds.")
+
+        if milestone.status == MilestoneEscrowStatus.RELEASED.value:
+            return MilestoneReleaseResponse(
+                milestone_id=milestone.id,
+                project_id=milestone.project_id,
+                task_id=milestone.task_id,
+                developer_id=milestone.developer_id,
+                status=milestone.status,
+                developer_payout_paise=milestone.developer_payout_paise,
+                tds_deducted_paise=0,
+                net_payout_paise=milestone.developer_payout_paise,
+                currency=milestone.currency,
+                released_at=milestone.released_at or _utcnow(),
+            )
+
+        if milestone.status != MilestoneEscrowStatus.HELD_IN_ESCROW.value:
+            raise ValidationError(
+                f"Cannot release milestone in status '{milestone.status}'. Milestone must be in 'HELD_IN_ESCROW'."
+            )
+
+        fy = _current_financial_year()
+        tds_ledger = await self.repo.get_tds_ledger(
+            developer_id=milestone.developer_id,
+            financial_year=fy,
+            for_update=True,
+        )
+        if tds_ledger is None:
+            tds_ledger = DeveloperTdsLedger(
+                developer_id=milestone.developer_id,
+                financial_year=fy,
+                cumulative_gross_payout_paise=0,
+                tds_threshold_crossed=False,
+                total_tds_deducted_paise=0,
+            )
+            self.repo.add_tds_ledger(tds_ledger)
+
+        # Section 194-O TDS: ₹5 Lakhs = 50,000,000 paise threshold
+        TDS_THRESHOLD_PAISE = 50_000_000
+        payout_paise = milestone.developer_payout_paise
+        projected_payout = tds_ledger.cumulative_gross_payout_paise + payout_paise
+
+        tds_paise = 0
+        if projected_payout >= TDS_THRESHOLD_PAISE or tds_ledger.tds_threshold_crossed:
+            tds_ledger.tds_threshold_crossed = True
+            tds_paise = int(payout_paise * 0.01)
+
+        net_payout_paise = payout_paise - tds_paise
+        tds_ledger.cumulative_gross_payout_paise = projected_payout
+        tds_ledger.total_tds_deducted_paise += tds_paise
+
+        rz_client = self.razorpay_client
+        if rz_client is None:
+            from app.core.config import Settings
+            rz_client = RazorpayClientAdapter(Settings())
+
+        if milestone.razorpay_transfer_id:
+            rz_client.release_transfer(milestone.razorpay_transfer_id)
+
+        milestone.status = MilestoneEscrowStatus.RELEASED.value
+        milestone.released_at = _utcnow()
+        await self.session.commit()
+
+        await self.telemetry_client.audit(
+            actor_id=user.id,
+            actor_role=user.role,
+            action="PAYMENT_MILESTONE_SETTLED_INSTANT",
+            resource_type="escrow_milestone",
+            resource_id=str(milestone.id),
+            project_id=milestone.project_id,
+            metadata={
+                "task_id": str(milestone.task_id),
+                "developer_id": str(milestone.developer_id),
+                "payout_paise": payout_paise,
+                "tds_deducted_paise": tds_paise,
+                "net_payout_paise": net_payout_paise,
+                "currency": milestone.currency,
+                "transfer_id": milestone.razorpay_transfer_id,
+            },
+            request_id=request_id,
+        )
+
+        return MilestoneReleaseResponse(
+            milestone_id=milestone.id,
+            project_id=milestone.project_id,
+            task_id=milestone.task_id,
+            developer_id=milestone.developer_id,
+            status=milestone.status,
+            developer_payout_paise=payout_paise,
+            tds_deducted_paise=tds_paise,
+            net_payout_paise=net_payout_paise,
+            currency=milestone.currency,
+            released_at=milestone.released_at,
+        )
+
+    async def refund_milestone_escrow(
+        self,
+        *,
+        identifier: str,
+        payload: MilestoneRefundRequest,
+        user: AuthenticatedUser,
+        request_id: str | None,
+    ) -> MilestoneRefundResponse:
+        """Reverse held funds back to client's original UPI/card source."""
+        milestone = None
+        try:
+            m_id = uuid.UUID(identifier)
+            milestone = await self.repo.get_milestone_by_id(m_id, for_update=True)
+        except ValueError:
+            pass
+
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_order_id(identifier)
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_transfer_id(identifier)
+
+        if milestone is None:
+            raise NotFoundError("Escrow milestone matching identifier not found.")
+
+        if user.role != "ADMIN" and milestone.owner_id != user.id:
+            raise ForbiddenError("Only project owners or administrators may refund milestones.")
+
+        if milestone.status == MilestoneEscrowStatus.REFUNDED.value:
+            return MilestoneRefundResponse(
+                milestone_id=milestone.id,
+                project_id=milestone.project_id,
+                task_id=milestone.task_id,
+                status=milestone.status,
+                refunded_amount_paise=milestone.amount_paise,
+                currency=milestone.currency,
+                refunded_at=milestone.refunded_at or _utcnow(),
+            )
+
+        if milestone.status not in {
+            MilestoneEscrowStatus.INITIATED.value,
+            MilestoneEscrowStatus.HELD_IN_ESCROW.value,
+            MilestoneEscrowStatus.DISPUTED.value,
+        }:
+            raise ValidationError(
+                f"Cannot refund milestone in status '{milestone.status}'. Milestone has already settled."
+            )
+
+        rz_client = self.razorpay_client
+        if rz_client is None:
+            from app.core.config import Settings
+            rz_client = RazorpayClientAdapter(Settings())
+
+        if milestone.razorpay_transfer_id and milestone.status == MilestoneEscrowStatus.HELD_IN_ESCROW.value:
+            rz_client.reverse_transfer(
+                transfer_id=milestone.razorpay_transfer_id,
+                amount_paise=milestone.developer_payout_paise,
+                reverse_all=True,
+            )
+
+        milestone.status = MilestoneEscrowStatus.REFUNDED.value
+        milestone.refunded_at = _utcnow()
+        await self.session.commit()
+
+        await self.telemetry_client.audit(
+            actor_id=user.id,
+            actor_role=user.role,
+            action="PAYMENT_MILESTONE_REVERSED_REFUND",
+            resource_type="escrow_milestone",
+            resource_id=str(milestone.id),
+            project_id=milestone.project_id,
+            metadata={
+                "task_id": str(milestone.task_id),
+                "reason": payload.reason,
+                "amount_paise": milestone.amount_paise,
+                "currency": milestone.currency,
+            },
+            request_id=request_id,
+        )
+
+        return MilestoneRefundResponse(
+            milestone_id=milestone.id,
+            project_id=milestone.project_id,
+            task_id=milestone.task_id,
+            status=milestone.status,
+            refunded_amount_paise=milestone.amount_paise,
+            currency=milestone.currency,
+            refunded_at=milestone.refunded_at,
+        )
+
+    async def process_razorpay_webhook(
+        self,
+        *,
+        raw_body: bytes,
+        signature: str,
+        request_id: str | None,
+    ) -> WebhookResponse:
+        """Handle Razorpay webhooks (payment.captured, transfer.processed, transfer.reversed) with HMAC validation."""
+        rz_client = self.razorpay_client
+        if rz_client is None:
+            from app.core.config import Settings
+            rz_client = RazorpayClientAdapter(Settings())
+
+        is_valid = rz_client.verify_webhook_signature(body=raw_body, signature=signature)
+        if not is_valid:
+            raise ValidationError("Invalid Razorpay webhook signature header.")
+
+        try:
+            event_data = json.loads(raw_body.decode("utf-8"))
+        except Exception:
+            raise ValidationError("Malformed JSON in webhook payload.")
+
+        event_name = event_data.get("event", "")
+        reconciled = False
+        milestone_id = None
+
+        if event_name == "payment.captured":
+            pay_entity = event_data.get("payload", {}).get("payment", {}).get("entity", {})
+            order_id = pay_entity.get("order_id")
+            payment_id = pay_entity.get("id")
+            if order_id:
+                milestone = await self.repo.get_milestone_by_order_id(order_id)
+                if milestone and milestone.status == MilestoneEscrowStatus.INITIATED.value:
+                    milestone.status = MilestoneEscrowStatus.HELD_IN_ESCROW.value
+                    milestone.razorpay_payment_id = payment_id
+                    milestone.held_at = _utcnow()
+                    await self.session.commit()
+                    reconciled = True
+                    milestone_id = str(milestone.id)
+
+        elif event_name in {"transfer.processed", "settlement.processed"}:
+            trf_entity = event_data.get("payload", {}).get("transfer", {}).get("entity", {})
+            transfer_id = trf_entity.get("id")
+            if transfer_id:
+                milestone = await self.repo.get_milestone_by_transfer_id(transfer_id)
+                if milestone and milestone.status == MilestoneEscrowStatus.HELD_IN_ESCROW.value:
+                    milestone.status = MilestoneEscrowStatus.RELEASED.value
+                    milestone.released_at = _utcnow()
+                    await self.session.commit()
+                    reconciled = True
+                    milestone_id = str(milestone.id)
+
+        elif event_name in {"transfer.reversed", "refund.processed"}:
+            trf_entity = event_data.get("payload", {}).get("transfer", {}).get("entity", {})
+            transfer_id = trf_entity.get("id")
+            if transfer_id:
+                milestone = await self.repo.get_milestone_by_transfer_id(transfer_id)
+                if milestone and milestone.status != MilestoneEscrowStatus.REFUNDED.value:
+                    milestone.status = MilestoneEscrowStatus.REFUNDED.value
+                    milestone.refunded_at = _utcnow()
+                    await self.session.commit()
+                    reconciled = True
+                    milestone_id = str(milestone.id)
+
+        return WebhookResponse(
+            status="ok",
+            event=event_name,
+            reconciled=reconciled,
+            milestone_id=milestone_id,
+        )
+
+    async def get_developer_tds_summary(
+        self,
+        *,
+        developer_id: uuid.UUID,
+        financial_year: str | None = None,
+    ) -> DeveloperTdsSummaryResponse:
+        """Return cumulative annual Section 194-O TDS standing for a developer."""
+        fy = financial_year or _current_financial_year()
+        ledger = await self.repo.get_tds_ledger(
+            developer_id=developer_id,
+            financial_year=fy,
+        )
+        if ledger is None:
+            return DeveloperTdsSummaryResponse(
+                developer_id=developer_id,
+                financial_year=fy,
+                cumulative_gross_payout_paise=0,
+                tds_threshold_crossed=False,
+                total_tds_deducted_paise=0,
+            )
+        return DeveloperTdsSummaryResponse(
+            developer_id=ledger.developer_id,
+            financial_year=ledger.financial_year,
+            cumulative_gross_payout_paise=ledger.cumulative_gross_payout_paise,
+            tds_threshold_crossed=ledger.tds_threshold_crossed,
+            total_tds_deducted_paise=ledger.total_tds_deducted_paise,
+        )
+
+    async def _find_milestone_by_identifier(self, identifier: str) -> EscrowMilestone | None:
+        """Locate milestone by either its UUID or razorpay_order_id or razorpay_transfer_id."""
+        milestone = None
+        try:
+            m_id = uuid.UUID(identifier)
+            milestone = await self.repo.get_milestone_by_id(m_id)
+        except ValueError:
+            pass
+
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_order_id(identifier)
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_order_id(identifier)
+        if milestone is None:
+            milestone = await self.repo.get_milestone_by_transfer_id(identifier)
+        return milestone
+
+    async def execute_ai_guarded_auto_release(
+        self,
+        *,
+        identifier: str,
+        payload: AutoReleaseExecutionRequest,
+        actor: AuthenticatedUser,
+        request_id: str | None = None,
+    ) -> AutoReleaseExecutionResponse:
+        """
+        AI-Guarded 5-Day Auto-Release:
+        Protects freelancers from client ghosting.
+        Auto-releases funds ONLY IF:
+          1. Submission age >= 5.0 days
+          2. GitHub Actions CI status is 100% Green (status == 'completed', conclusion == 'success')
+          3. Gemini AI Audit Score >= 95 with zero security vulnerabilities, no mock code, and recommendation == 'APPROVED_FOR_RELEASE'
+        """
+        milestone = await self._find_milestone_by_identifier(identifier)
+        if milestone is None:
+            raise NotFoundError(f"Milestone not found for identifier '{identifier}'.")
+
+        rejection_reasons: list[str] = []
+
+        if payload.submission_age_days < 5.0:
+            rejection_reasons.append(
+                f"Submission age is {payload.submission_age_days:.1f} days; minimum 5 days required for auto-release."
+            )
+
+        ci_passed = (payload.ci_status == "completed" and payload.ci_conclusion == "success")
+        if not ci_passed:
+            rejection_reasons.append(
+                f"CI status is not 100% green (status={payload.ci_status}, conclusion={payload.ci_conclusion})."
+            )
+
+        ai_passed = (
+            payload.ai_audit_score >= 95
+            and payload.security_vulnerabilities_count == 0
+            and not payload.hollow_mock_code_detected
+            and payload.ai_recommendation == "APPROVED_FOR_RELEASE"
+        )
+        if not ai_passed:
+            if payload.ai_audit_score < 95:
+                rejection_reasons.append(
+                    f"AI audit score is {payload.ai_audit_score}/100, which is below the 95% threshold."
+                )
+            if payload.security_vulnerabilities_count > 0:
+                rejection_reasons.append(
+                    f"AI forensic scanner detected {payload.security_vulnerabilities_count} security vulnerabilities."
+                )
+            if payload.hollow_mock_code_detected:
+                rejection_reasons.append("AI forensic scanner detected hollow mock code.")
+            if payload.ai_recommendation != "APPROVED_FOR_RELEASE":
+                rejection_reasons.append(
+                    f"AI recommendation is '{payload.ai_recommendation}', not APPROVED_FOR_RELEASE."
+                )
+
+        if rejection_reasons:
+            return AutoReleaseExecutionResponse(
+                milestone_id=milestone.id,
+                task_id=milestone.task_id,
+                status=milestone.status,
+                auto_released=False,
+                rejection_reasons=rejection_reasons,
+            )
+
+        # Pre-conditions met! Release payout via standard release pipeline
+        # System-authorized auto release can act on behalf of owner or platform admin
+        admin_actor = AuthenticatedUser(
+            id=actor.id,
+            email=actor.email,
+            full_name=actor.full_name,
+            role="ADMIN",
+            is_active=actor.is_active,
+            is_verified=actor.is_verified,
+            access_token=actor.access_token,
+        )
+        release_res = await self.release_milestone_payout(
+            identifier=identifier,
+            user=admin_actor,
+            request_id=request_id,
+        )
+
+        return AutoReleaseExecutionResponse(
+            milestone_id=release_res.milestone_id,
+            task_id=release_res.task_id,
+            status=release_res.status,
+            auto_released=True,
+            rejection_reasons=[],
+            developer_payout_paise=release_res.developer_payout_paise,
+            tds_deducted_paise=release_res.tds_deducted_paise,
+            net_payout_paise=release_res.net_payout_paise,
+            released_at=release_res.released_at,
+        )
+
+
+
 

@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.routes import build_root_router
+from app.clients.razorpay_client import RazorpayClientAdapter
 from app.clients.service_clients import (
     IdentityClient,
     ProjectClient,
@@ -77,6 +78,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         internal_service_key=settings.INTERNAL_SERVICE_KEY,
         timeout_seconds=settings.SERVICE_CLIENT_TIMEOUT_SECONDS,
     )
+    app.state.razorpay_client = RazorpayClientAdapter(settings)
 
     @app.middleware("http")
     async def correlation_middleware(
