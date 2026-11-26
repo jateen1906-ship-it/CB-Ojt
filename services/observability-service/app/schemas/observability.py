@@ -32,14 +32,18 @@ class PlatformServicesStatusResponse(BaseModel):
 
 
 class TelemetryCreateRequest(BaseModel):
-    service_name: str = Field(min_length=2, max_length=80)
-    route_path: str = Field(min_length=1, max_length=255)
-    method: str = Field(min_length=2, max_length=16)
-    status_code: int = Field(ge=100, le=599)
-    duration_ms: float = Field(ge=0.0, le=600000.0)
+    service_name: str = Field(default="observability-service", min_length=2, max_length=80)
+    route_path: str = Field(default="/", min_length=1, max_length=255)
+    method: str = Field(default="GET", min_length=2, max_length=16)
+    status_code: int = Field(default=200, ge=100, le=599)
+    duration_ms: float = Field(default=0.0, ge=0.0, le=600000.0)
     error_code: str | None = Field(default=None, max_length=80)
     error_summary: str | None = Field(default=None, max_length=1000)
     request_id: str | None = Field(default=None, max_length=120)
+    action: str | None = Field(default=None, max_length=120)
+    resource_type: str | None = Field(default=None, max_length=120)
+    resource_id: str | None = Field(default=None, max_length=120)
+    metadata: dict | None = None
 
 
 class TelemetryRecordResponse(BaseModel):

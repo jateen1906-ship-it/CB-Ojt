@@ -133,16 +133,34 @@ def _default_error_for_status(status_code: int) -> tuple[str, str]:
     mapping: dict[int, tuple[str, str]] = {
         400: ("VALIDATION_ERROR", "The request could not be validated."),
         401: ("UNAUTHORIZED", "Authentication is required."),
+        402: ("PAYMENT_REQUIRED", "Payment or escrow funding is required."),
         403: ("FORBIDDEN", "You do not have permission to perform this action."),
         404: ("NOT_FOUND", "The requested resource was not found."),
         405: ("VALIDATION_ERROR", "HTTP method is not allowed for this endpoint."),
+        406: ("NOT_ACCEPTABLE", "The requested resource format is not acceptable."),
+        408: ("REQUEST_TIMEOUT", "The client request timed out before transmission completed."),
         409: ("CONFLICT", "The request conflicts with the current resource state."),
+        410: ("GONE", "The target resource is permanently no longer available."),
+        411: ("LENGTH_REQUIRED", "Content-Length header is required for this request."),
+        412: ("PRECONDITION_FAILED", "One or more request preconditions failed."),
+        413: ("PAYLOAD_TOO_LARGE", "The request payload exceeds maximum permitted size."),
+        414: ("URI_TOO_LONG", "The request URI exceeds the maximum permitted length."),
+        415: ("UNSUPPORTED_MEDIA_TYPE", "The request payload format is not supported."),
+        416: ("RANGE_NOT_SATISFIABLE", "The requested byte range cannot be satisfied."),
+        417: ("EXPECTATION_FAILED", "The server cannot meet Expect header requirements."),
         422: ("VALIDATION_ERROR", "Request validation failed."),
-        429: ("RATE_LIMITED", "Too many requests."),
+        423: ("LOCKED", "The requested resource is locked."),
+        425: ("TOO_EARLY", "The request risk of replay is too high."),
+        426: ("UPGRADE_REQUIRED", "Protocol upgrade is required for this endpoint."),
+        428: ("PRECONDITION_REQUIRED", "The origin server requires the request to be conditional."),
+        429: ("RATE_LIMITED", "Too many requests. Please wait before retrying."),
+        431: ("HEADERS_TOO_LARGE", "Request header fields are too large."),
         500: ("INTERNAL_SERVER_ERROR", "An unexpected internal server error occurred."),
+        501: ("NOT_IMPLEMENTED", "This endpoint capability is not implemented."),
         502: ("SERVICE_UNAVAILABLE", "Upstream service communication failed."),
         503: ("SERVICE_UNAVAILABLE", "The requested service is currently unavailable."),
         504: ("SERVICE_TIMEOUT", "The upstream service timed out while processing the request."),
+        505: ("HTTP_VERSION_NOT_SUPPORTED", "The HTTP version used in the request is not supported."),
     }
     if status_code in mapping:
         return mapping[status_code]
@@ -157,8 +175,16 @@ def build_error_response(
     error_code: str,
     message: str,
     request_id: str,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
-    """Construct the standardized JSON error response envelope."""
+    """Construct the standardized JSON error response envelope with immediate diagnostics."""
+    response_headers = {
+        "X-Request-ID": request_id,
+        "X-Error-Code": error_code,
+        "X-Status-Code": str(status_code),
+    }
+    if headers:
+        response_headers.update(headers)
     return JSONResponse(
         status_code=status_code,
         content={
@@ -169,7 +195,7 @@ def build_error_response(
             },
             "request_id": request_id,
         },
-        headers={"X-Request-ID": request_id},
+        headers=response_headers,
     )
 
 
@@ -310,32 +336,54 @@ def register_exception_handlers(app: FastAPI) -> None:
         message = _sanitize_error_message(detail, default_message)
         if exc.status_code == status.HTTP_404_NOT_FOUND:
             message = "The requested endpoint was not found."
+        extra_headers = dict(exc.headers) if exc.headers else None
         return build_error_response(
             status_code=exc.status_code,
             error_code=error_code,
             message=message,
             request_id=request_id,
+            headers=extra_headers,
         )
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-        request_id = resolve_request_id(request)
-        logger.error(
-            "Unhandled Gateway exception",
-            exc_info=(type(exc), exc, exc.__traceback__),
-            extra={
-                "event": "unhandled_exception",
-                "request_id": request_id,
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "error_code": "INTERNAL_SERVER_ERROR",
-            },
-        )
-        return build_error_response(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_code="INTERNAL_SERVER_ERROR",
-            message="An unexpected internal server error occurred.",
-            request_id=request_id,
-        )
+        try:
+            request_id = resolve_request_id(request)
+            logger.error(
+                "Unhandled Gateway exception",
+                exc_info=(type(exc), exc, exc.__traceback__),
+                extra={
+                    "event": "unhandled_exception",
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "error_code": "INTERNAL_SERVER_ERROR",
+                },
+            )
+            return build_error_response(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                error_code="INTERNAL_SERVER_ERROR",
+                message="An unexpected internal server error occurred.",
+                request_id=request_id,
+            )
+        except Exception:
+            # Absolute fallback guarantee: cannot crash under any circumstance
+            fallback_id = str(uuid.uuid4())
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "INTERNAL_SERVER_ERROR",
+                        "message": "An unexpected internal server error occurred.",
+                    },
+                    "request_id": fallback_id,
+                },
+                headers={
+                    "X-Request-ID": fallback_id,
+                    "X-Error-Code": "INTERNAL_SERVER_ERROR",
+                    "X-Status-Code": "500",
+                },
+            )
 

@@ -2,6 +2,7 @@
 
 from app.models.base import Base
 from app.models.verification import (
+    CIWorkflowRun,
     VerificationEvent,
     VerificationStatus,
     VerifiedWorkRecord,
@@ -9,6 +10,7 @@ from app.models.verification import (
 
 __all__ = [
     "Base",
+    "CIWorkflowRun",
     "VerificationEvent",
     "VerificationStatus",
     "VerifiedWorkRecord",

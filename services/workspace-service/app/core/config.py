@@ -56,6 +56,8 @@ class Settings(BaseSettings):
 
     # Docker runtime & sandbox configuration
     WORKSPACE_DOCKER_MODE: Literal["docker", "mock"] = "mock"
+    # Explicit opt-in for PaaS hosts (e.g. Render) that have no Docker daemon.
+    WORKSPACE_ALLOW_MOCK_IN_PRODUCTION: bool = False
     WORKSPACE_STORAGE_ROOT: str = "./workspace_data"
     WORKSPACE_DEFAULT_IMAGE: str = "python:3.13-slim"
     WORKSPACE_ALLOWED_IMAGES: str = "python:3.13-slim,node:20-slim,ubuntu:24.04"
@@ -147,8 +149,11 @@ class Settings(BaseSettings):
                 )
             if self.DEBUG:
                 raise ValueError("DEBUG must be false in production/staging environments.")
-            if self.WORKSPACE_DOCKER_MODE != "docker":
-                raise ValueError("WORKSPACE_DOCKER_MODE must be 'docker' in production/staging.")
+            if self.WORKSPACE_DOCKER_MODE != "docker" and not self.WORKSPACE_ALLOW_MOCK_IN_PRODUCTION:
+                raise ValueError(
+                    "WORKSPACE_DOCKER_MODE must be 'docker' in production/staging "
+                    "(set WORKSPACE_ALLOW_MOCK_IN_PRODUCTION=true on hosts without a Docker daemon)."
+                )
             if not self.WORKSPACE_NETWORK_DISABLED:
                 raise ValueError("WORKSPACE_NETWORK_DISABLED must be true in production/staging.")
         return self

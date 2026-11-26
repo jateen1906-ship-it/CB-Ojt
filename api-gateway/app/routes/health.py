@@ -9,6 +9,8 @@ router = APIRouter(tags=["Health"])
 
 
 @router.get("/health", summary="API Gateway health check")
+@router.get("/health/live", summary="Kubernetes liveness probe")
+@router.get("/live", summary="Kubernetes liveness probe alias")
 async def health_check(request: Request) -> dict:
     """Check the health of the API Gateway process and connected services."""
     settings = request.app.state.settings
@@ -17,15 +19,23 @@ async def health_check(request: Request) -> dict:
     if redis_mgr and redis_mgr.settings.REDIS_ENABLED:
         redis_status = "connected" if redis_mgr.is_available else "disconnected"
 
+    http_client = getattr(request.app.state, "http_client", None)
+    cb_stats = {}
+    if http_client and hasattr(http_client, "circuit_breakers"):
+        for svc, breaker in http_client.circuit_breakers._breakers.items():
+            cb_stats[svc] = breaker.state.value
+
     return {
         "status": "healthy",
         "service": "api-gateway",
         "version": settings.APP_VERSION,
         "redis": redis_status,
+        "circuit_breakers": cb_stats,
     }
 
 
 @router.get("/ready", summary="API Gateway readiness check")
+@router.get("/health/ready", summary="Kubernetes readiness probe")
 async def readiness_check(request: Request) -> JSONResponse:
     """Check API Gateway HTTP client readiness."""
     client_open = bool(getattr(request.app.state.http_client, "is_open", False))

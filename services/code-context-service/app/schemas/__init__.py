@@ -1,5 +1,10 @@
 """Pydantic schema exports for Code Context Service."""
 
+from app.schemas.ai_audit import (
+    AuditPRRequest,
+    AuditReportCard,
+    RequirementAudit,
+)
 from app.schemas.common import (
     ErrorDetail,
     ErrorResponse,
@@ -29,6 +34,8 @@ from app.schemas.query import (
 
 __all__ = [
     "AIInsightSummary",
+    "AuditPRRequest",
+    "AuditReportCard",
     "DeterministicInsightsReport",
     "ErrorDetail",
     "ErrorResponse",

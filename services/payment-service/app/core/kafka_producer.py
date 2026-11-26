@@ -8,8 +8,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from aiokafka import AIOKafkaProducer
-from aiokafka.errors import KafkaError
+try:
+    from aiokafka import AIOKafkaProducer
+    from aiokafka.errors import KafkaError
+except ImportError:
+    AIOKafkaProducer = None  # type: ignore[assignment, misc]
+    KafkaError = Exception  # type: ignore[assignment, misc]
 
 logger = logging.getLogger("codebridge.payment.kafka")
 
@@ -28,7 +32,8 @@ class PaymentKafkaProducer:
         return self._is_available and self.producer is not None
 
     async def startup(self) -> None:
-        if not self.enabled:
+        if not self.enabled or AIOKafkaProducer is None:
+            self._is_available = False
             return
         try:
             self.producer = AIOKafkaProducer(

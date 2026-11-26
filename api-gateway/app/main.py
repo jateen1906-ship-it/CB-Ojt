@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.clients.http_client import GatewayHTTPClient
 from app.clients.service_registry import build_service_registry
@@ -17,6 +18,7 @@ from app.core.redis_client import GatewayRedisManager
 from app.middleware.auth_blacklist import TokenBlacklistMiddleware
 from app.middleware.correlation import CorrelationIDMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.routes.health import router as health_router
 from app.routes.proxy import build_proxy_router
 
@@ -63,8 +65,8 @@ def create_app(
     # Middlewares (ordered from inner to outer)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=resolved_settings.CORS_ORIGINS if "*" not in resolved_settings.CORS_ORIGINS else ["*"],
-        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.loca\.lt",
+        allow_origins=[] if "*" in resolved_settings.CORS_ORIGINS else resolved_settings.CORS_ORIGINS,
+        allow_origin_regex=resolved_settings.CORS_ORIGIN_REGEX or None,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -79,6 +81,8 @@ def create_app(
     )
     application.add_middleware(TokenBlacklistMiddleware, redis_manager=redis_manager)
     application.add_middleware(RateLimitMiddleware, redis_manager=redis_manager)
+    application.add_middleware(SecurityHeadersMiddleware)
+    application.add_middleware(GZipMiddleware, minimum_size=1000)
     application.add_middleware(CorrelationIDMiddleware)
 
     application.include_router(health_router)
@@ -87,6 +91,10 @@ def create_app(
     application.include_router(
         proxy_router,
         prefix=resolved_settings.API_V1_PREFIX,
+    )
+    application.include_router(
+        proxy_router,
+        prefix=f"{resolved_settings.API_V1_PREFIX}{resolved_settings.API_V1_PREFIX}",
     )
 
     return application

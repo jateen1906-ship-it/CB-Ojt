@@ -1,0 +1,65 @@
+apiVersion: 1
+
+datasources:
+  - name: CodeBridge-Projects
+    uid: CodeBridge-Projects
+    type: postgres
+    access: proxy
+    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
+    user: neondb_owner
+    secureJsonData:
+      password: npg_qB9SonVRFZ5O
+    jsonData:
+      database: codebridge_project
+      sslmode: require
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+    isDefault: true
+    editable: true
+
+  - name: CodeBridge-Payments
+    uid: CodeBridge-Payments
+    type: postgres
+    access: proxy
+    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
+    user: neondb_owner
+    secureJsonData:
+      password: npg_qB9SonVRFZ5O
+    jsonData:
+      database: codebridge_payment
+      sslmode: require
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+    editable: true
+
+  - name: CodeBridge-Identity
+    uid: CodeBridge-Identity
+    type: postgres
+    access: proxy
+    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
+    user: neondb_owner
+    secureJsonData:
+      password: npg_qB9SonVRFZ5O
+    jsonData:
+      database: codebridge_identity
+      sslmode: require
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+    editable: true
+
+  - name: Prometheus
+    uid: CodeBridge-Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s

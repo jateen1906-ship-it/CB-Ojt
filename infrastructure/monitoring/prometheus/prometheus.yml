@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: 'codebridge-observability'
+    scrape_interval: 5s
+    metrics_path: '/api/v1/observability/prometheus'
+    static_configs:
+      - targets: ['observability-service:8012']
+        labels:
+          service: 'observability-service'
+          environment: 'production'
+
+  - job_name: 'codebridge-prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

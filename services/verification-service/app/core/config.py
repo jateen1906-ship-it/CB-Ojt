@@ -58,6 +58,9 @@ class Settings(BaseSettings):
 
     VERIFICATION_SIGNING_SECRET: str = _DEV_SIGNING_SECRET
     VERIFICATION_SIGNING_KEY_ID: str = "cb-verify-v1"
+    GITHUB_WEBHOOK_SECRET: str = "dev-github-webhook-secret-change-me"
+    CODE_CONTEXT_SERVICE_URL: str = "http://localhost:8004"
+    PAYMENT_SERVICE_URL: str = "http://localhost:8008"
 
     @field_validator("DEBUG", mode="before")
     @classmethod

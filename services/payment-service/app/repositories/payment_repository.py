@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import (
+    DeveloperTdsLedger,
+    EscrowMilestone,
     EscrowPayment,
     EscrowStatus,
     EscrowTransaction,
@@ -106,4 +108,65 @@ class PaymentRepository:
 
     def add_idempotency_record(self, rec: PaymentIdempotencyRecord) -> None:
         self.session.add(rec)
+
+    async def get_milestone_by_id(
+        self,
+        milestone_id: uuid.UUID,
+        *,
+        for_update: bool = False,
+    ) -> EscrowMilestone | None:
+        stmt = select(EscrowMilestone).where(EscrowMilestone.id == milestone_id)
+        if for_update:
+            bind = self.session.get_bind()
+            if bind is not None and bind.dialect.name != "sqlite":
+                stmt = stmt.with_for_update()
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_milestone_by_project_and_task(
+        self,
+        project_id: uuid.UUID,
+        task_id: uuid.UUID,
+    ) -> EscrowMilestone | None:
+        stmt = select(EscrowMilestone).where(
+            EscrowMilestone.project_id == project_id,
+            EscrowMilestone.task_id == task_id,
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_milestone_by_order_id(self, order_id: str) -> EscrowMilestone | None:
+        stmt = select(EscrowMilestone).where(EscrowMilestone.razorpay_order_id == order_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_milestone_by_idempotency_key(self, idempotency_key: uuid.UUID) -> EscrowMilestone | None:
+        stmt = select(EscrowMilestone).where(EscrowMilestone.idempotency_key == idempotency_key)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    def add_milestone(self, milestone: EscrowMilestone) -> None:
+        self.session.add(milestone)
+
+    async def get_milestone_by_transfer_id(self, transfer_id: str) -> EscrowMilestone | None:
+        stmt = select(EscrowMilestone).where(EscrowMilestone.razorpay_transfer_id == transfer_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_tds_ledger(
+        self,
+        *,
+        developer_id: uuid.UUID,
+        financial_year: str,
+        for_update: bool = False,
+    ) -> DeveloperTdsLedger | None:
+        stmt = select(DeveloperTdsLedger).where(
+            DeveloperTdsLedger.developer_id == developer_id,
+            DeveloperTdsLedger.financial_year == financial_year,
+        )
+        if for_update:
+            bind = self.session.get_bind()
+            if bind is not None and bind.dialect.name != "sqlite":
+                stmt = stmt.with_for_update()
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    def add_tds_ledger(self, ledger: DeveloperTdsLedger) -> None:
+        self.session.add(ledger)
+
+
 

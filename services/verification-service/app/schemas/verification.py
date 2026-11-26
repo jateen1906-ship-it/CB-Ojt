@@ -118,3 +118,55 @@ class MyVerifiedWorkListResponse(BaseModel):
     total: int
     items: list[VerifiedWorkRecordResponse]
 
+
+class GitHubWorkflowRunWebhookPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    action: str
+    workflow_run: dict
+    repository: dict
+    sender: dict | None = None
+
+
+class CIWorkflowRunResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    repository_full_name: str
+    workflow_id: int
+    run_id: int
+    head_sha: str
+    head_branch: str | None = None
+    status: str
+    conclusion: str | None = None
+    pr_number: int | None = None
+    created_at: datetime
+
+
+class PayRailAutoReleaseCheckRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: uuid.UUID
+    task_id: uuid.UUID
+    head_sha: str
+    submission_age_days: float = Field(..., ge=0.0)
+    repository_full_name: str | None = None
+    pr_number: int | None = None
+
+
+class PayRailAutoReleaseCheckResponse(BaseModel):
+    project_id: uuid.UUID
+    task_id: uuid.UUID
+    submission_age_days: float
+    eligible_for_auto_release: bool
+    rejection_reasons: list[str]
+    ci_status: str | None = None
+    ci_conclusion: str | None = None
+    ci_passed: bool
+    ai_score: int | None = None
+    ai_passed: bool
+    ai_recommendation: str | None = None
+    hollow_mock_code_detected: bool
+    security_vulnerabilities_count: int
+
+

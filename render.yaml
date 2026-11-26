@@ -1,0 +1,67 @@
+# Render Blueprint: deploys both CodeBridge backend containers.
+# Render dashboard -> New -> Blueprint -> select this repo.
+# Values marked `sync: false` are prompted for on first deploy.
+envVarGroups:
+  - name: codebridge-shared
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: INTERNAL_SERVICE_KEY
+        generateValue: true
+      - key: POSTGRES_HOST          # e.g. ep-xxxx.ap-southeast-1.aws.neon.tech
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_SSL_PARAM
+        value: "?ssl=require"
+      - key: REDIS_URL              # optional (Upstash rediss://...)
+        sync: false
+
+services:
+  - type: web
+    name: codebridge-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: codebridge-shared
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS           # your frontend URL, e.g. https://codebridge.vercel.app
+        sync: false
+      - key: GITHUB_SERVICE_URL
+        value: https://codebridge-backend-2.onrender.com
+      - key: REVIEW_SERVICE_URL
+        value: https://codebridge-backend-2.onrender.com
+      - key: VERIFICATION_SERVICE_URL
+        value: https://codebridge-backend-2.onrender.com
+      - key: ADMIN_SERVICE_URL
+        value: https://codebridge-backend-2.onrender.com
+      - key: AUDIT_SERVICE_URL
+        value: https://codebridge-backend-2.onrender.com
+
+  - type: web
+    name: codebridge-backend-2
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.render2
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: codebridge-shared
+      - key: IDENTITY_SERVICE_URL
+        value: https://codebridge-backend-cb2m.onrender.com
+      - key: PROJECT_SERVICE_URL
+        value: https://codebridge-backend-cb2m.onrender.com
+      - key: VERIFICATION_SIGNING_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN_ENCRYPTION_KEY   # base64 of 32 random bytes
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false

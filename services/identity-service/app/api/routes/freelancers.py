@@ -52,6 +52,29 @@ async def list_freelancers(
     )
 
 
+@router.get(
+    "/me",
+    response_model=FreelancerProfileDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated FREELANCER's profile",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized."},
+        403: {"model": ErrorResponse, "description": "Forbidden (FREELANCER role required)."},
+    },
+)
+async def get_my_freelancer_profile(
+    current_user: User = Depends(require_freelancer),
+    session: AsyncSession = Depends(get_db_session),
+) -> FreelancerProfileDetail:
+    service = ProfileService(session)
+    profile = await service.profile_repo.get_by_user_id(current_user.id)
+    if profile is None:
+        profile = await service.profile_repo.create_profile(user_id=current_user.id)
+        await session.commit()
+        await session.refresh(profile)
+    return FreelancerProfileDetail.model_validate(profile)
+
+
 @router.patch(
     "/me",
     response_model=FreelancerProfileDetail,

@@ -39,8 +39,8 @@ def test_xml_delimiter_escaping_prevents_tag_breakout() -> None:
     )
     assert prompt.count("<repository_evidence>") == 1
     assert prompt.count("</repository_evidence>") == 1
-    assert prompt.count("<user_query>") == 1
     assert prompt.count("</user_query>") == 1
+    assert prompt.count("<user_query>") == 1
 
 
 @pytest.mark.asyncio

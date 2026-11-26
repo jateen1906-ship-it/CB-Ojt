@@ -57,6 +57,13 @@ class Settings(BaseSettings):
         default_factory=lambda: ["*"]
     )
     CORS_ALLOW_CREDENTIALS: bool = False
+    # Regex of additional allowed origins (local/LAN dev hosts and preview domains).
+    # Set to an empty string in production to allow only explicit CORS_ORIGINS.
+    CORS_ORIGIN_REGEX: str | None = (
+        r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+"
+        r"|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?"
+        r"|https://.*\.(loca\.lt|vercel\.app|trycloudflare\.com)"
+    )
 
     # HTTPX transport configuration
     REQUEST_TIMEOUT_SECONDS: float = Field(default=10.0, gt=0.0, le=300.0)

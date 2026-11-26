@@ -26,6 +26,7 @@ def build_async_engine(settings: Settings) -> AsyncEngine:
     }
     if not is_sqlite:
         engine_kwargs["pool_pre_ping"] = True
+        engine_kwargs["pool_recycle"] = 300
         engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
         engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
 

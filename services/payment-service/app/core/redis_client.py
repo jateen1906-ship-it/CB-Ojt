@@ -9,8 +9,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-import redis.asyncio as aioredis
-from redis.exceptions import RedisError
+try:
+    import redis.asyncio as aioredis
+    from redis.exceptions import RedisError
+except ImportError:
+    aioredis = None  # type: ignore[assignment, misc]
+    RedisError = Exception  # type: ignore[assignment, misc]
 
 if TYPE_CHECKING:
     from app.core.config import Settings
@@ -31,7 +35,7 @@ class PaymentRedisManager:
         return self._is_available and self.client is not None
 
     async def startup(self) -> None:
-        if not self.settings.REDIS_ENABLED or not self.settings.REDIS_URL:
+        if not self.settings.REDIS_ENABLED or not self.settings.REDIS_URL or aioredis is None:
             self._is_available = False
             return
 

@@ -21,6 +21,7 @@ def build_async_engine(settings: Settings) -> AsyncEngine:
     if settings.DATABASE_URL.startswith("postgresql+asyncpg://"):
         kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
         kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
+        kwargs["pool_recycle"] = 300
         kwargs["pool_pre_ping"] = True
     else:
         kwargs["connect_args"] = {"check_same_thread": False}

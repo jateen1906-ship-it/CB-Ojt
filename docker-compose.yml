@@ -3,6 +3,20 @@
 # ==============================================================================
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: codebridge-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codebridge-net
+
   kafka:
     image: apache/kafka:3.8.0
     container_name: codebridge-kafka
@@ -51,6 +65,28 @@ services:
     networks:
       - codebridge-net
 
+  load-balancer:
+    build:
+      context: ./infrastructure/nginx
+      dockerfile: Dockerfile
+    container_name: codebridge-load-balancer
+    ports:
+      - "${LOAD_BALANCER_HTTP_PORT:-80}:80"
+      - "${API_GATEWAY_PORT:-8000}:8000"
+      - "8080:8080"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      api-gateway-replica:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:80/lb-health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - codebridge-net
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -77,7 +113,9 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8011
       OBSERVABILITY_SERVICE_URL: http://observability-service:8012
       REQUEST_TIMEOUT_SECONDS: ${HTTP_CLIENT_TIMEOUT_SECONDS:-10.0}
-      REDIS_URL: ${REDIS_URL:-}
+      HTTP_MAX_CONNECTIONS: ${HTTP_MAX_CONNECTIONS:-500}
+      HTTP_MAX_KEEPALIVE_CONNECTIONS: ${HTTP_MAX_KEEPALIVE_CONNECTIONS:-100}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -86,8 +124,58 @@ services:
       AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-20}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
     ports:
-      - "${API_GATEWAY_PORT:-8000}:8000"
-      - "8080:8000"
+      - "8081:8000"
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      project-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codebridge-net
+
+  api-gateway-replica:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: codebridge-api-gateway-replica
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORT: 8000
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      CORS_ALLOW_METHODS: ${CORS_ALLOW_METHODS:-*}
+      CORS_ALLOW_HEADERS: ${CORS_ALLOW_HEADERS:-*}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-false}
+      IDENTITY_SERVICE_URL: http://identity-service:8001
+      PROJECT_SERVICE_URL: http://project-service:8002
+      GITHUB_SERVICE_URL: http://github-service:8003
+      CODE_CONTEXT_SERVICE_URL: http://code-context-service:8004
+      WORKSPACE_SERVICE_URL: http://workspace-service:8005
+      REVIEW_SERVICE_URL: http://review-service:8006
+      VERIFICATION_SERVICE_URL: http://verification-service:8007
+      PAYMENT_SERVICE_URL: http://payment-service:8008
+      NOTIFICATION_SERVICE_URL: http://notification-service:8009
+      ADMIN_SERVICE_URL: http://admin-service:8010
+      AUDIT_SERVICE_URL: http://audit-service:8011
+      OBSERVABILITY_SERVICE_URL: http://observability-service:8012
+      REQUEST_TIMEOUT_SECONDS: ${HTTP_CLIENT_TIMEOUT_SECONDS:-10.0}
+      HTTP_MAX_CONNECTIONS: ${HTTP_MAX_CONNECTIONS:-500}
+      HTTP_MAX_KEEPALIVE_CONNECTIONS: ${HTTP_MAX_KEEPALIVE_CONNECTIONS:-100}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-20}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
+    ports:
+      - "8082:8000"
     depends_on:
       identity-service:
         condition: service_healthy
@@ -106,17 +194,21 @@ services:
       context: ./services/identity-service
       dockerfile: Dockerfile
     container_name: codebridge-identity-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8001 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8001
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_identity${POSTGRES_SSL_PARAM:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-insecure-secret-key-change-before-production-32bytes}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     ports:
       - "${IDENTITY_SERVICE_PORT:-8001}:8001"
     healthcheck:
@@ -132,14 +224,14 @@ services:
       context: ./services/project-service
       dockerfile: Dockerfile
     container_name: codebridge-project-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8002"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8002 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORT: 8002
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_project${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -161,7 +253,7 @@ services:
       context: ./services/github-service
       dockerfile: Dockerfile
     container_name: codebridge-github-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8003"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8003 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -193,7 +285,7 @@ services:
       context: ./services/code-context-service
       dockerfile: Dockerfile
     container_name: codebridge-code-context-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8004"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8004 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -228,7 +320,7 @@ services:
       context: ./services/workspace-service
       dockerfile: Dockerfile
     container_name: codebridge-workspace-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8005"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8005 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -262,7 +354,7 @@ services:
       context: ./services/review-service
       dockerfile: Dockerfile
     container_name: codebridge-review-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8006"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8006 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -274,7 +366,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -300,7 +392,7 @@ services:
       context: ./services/verification-service
       dockerfile: Dockerfile
     container_name: codebridge-verification-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8007"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8007 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -313,7 +405,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -340,7 +432,7 @@ services:
       context: ./services/payment-service
       dockerfile: Dockerfile
     container_name: codebridge-payment-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8008"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8008 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -352,7 +444,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -378,7 +470,7 @@ services:
       context: ./services/notification-service
       dockerfile: Dockerfile
     container_name: codebridge-notification-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8009"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8009 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -386,7 +478,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/codebridge_notification${POSTGRES_SSL_PARAM:-}
       IDENTITY_SERVICE_URL: http://identity-service:8001
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -408,7 +500,7 @@ services:
       context: ./services/admin-service
       dockerfile: Dockerfile
     container_name: codebridge-admin-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8010"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8010 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -420,7 +512,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8009
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -444,7 +536,7 @@ services:
       context: ./services/audit-service
       dockerfile: Dockerfile
     container_name: codebridge-audit-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8011"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8011 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -453,7 +545,7 @@ services:
       IDENTITY_SERVICE_URL: http://identity-service:8001
       PROJECT_SERVICE_URL: http://project-service:8002
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -475,7 +567,7 @@ services:
       context: ./services/observability-service
       dockerfile: Dockerfile
     container_name: codebridge-observability-service
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8012"]
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8012 --proxy-headers --forwarded-allow-ips=*"]
     environment:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -494,7 +586,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:8010
       AUDIT_SERVICE_URL: http://audit-service:8011
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-service-key-change-me}
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
@@ -511,10 +603,57 @@ services:
     networks:
       - codebridge-net
 
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: codebridge-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codebridge-net
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: codebridge-grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/codebridge-platform-analytics.json
+      - GF_UNIFIED_ALERTING_ENABLED=false
+      - GF_ALERTING_ENABLED=false
+    volumes:
+      - ./infrastructure/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - codebridge-net
+
 volumes:
   postgres_data:
   chroma_data:
   workspace_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   codebridge-net:

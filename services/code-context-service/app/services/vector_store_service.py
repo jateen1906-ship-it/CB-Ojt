@@ -9,8 +9,12 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-import chromadb
-from chromadb.config import Settings as ChromaSettings
+try:
+    import chromadb
+    from chromadb.config import Settings as ChromaSettings
+except ImportError:
+    chromadb = None  # type: ignore[assignment]
+    ChromaSettings = None  # type: ignore[assignment, misc]
 
 from app.core.exceptions import IndexingFailedError, UpstreamServiceUnavailableError
 from app.core.logging import get_logger
@@ -78,7 +82,7 @@ class VectorStoreService:
 
     def startup(self) -> None:
         """Initialize ChromaDB PersistentClient or EphemeralClient with telemetry disabled."""
-        if self._client is not None:
+        if self._client is not None or chromadb is None:
             return
         chroma_settings = ChromaSettings(
             anonymized_telemetry=False,

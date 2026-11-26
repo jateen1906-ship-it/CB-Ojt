@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_session
 from app.core.dependencies import require_any_authenticated
 from app.core.security import AuthenticatedUser
-from app.models.project import Project, ProjectStatus
+from app.models.project import Project
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -23,19 +23,20 @@ def _to_task_summary(proj: Project) -> dict[str, Any]:
         if proj.deadline
         else (datetime.now(UTC) + timedelta(days=5)).isoformat()
     )
+    status_str = str(getattr(proj.status, "value", proj.status) or "").upper()
     status_map = {
-        ProjectStatus.DRAFT: "in_progress",
-        ProjectStatus.OPEN: "in_progress",
-        ProjectStatus.ASSIGNED: "in_progress",
-        ProjectStatus.IN_PROGRESS: "in_progress",
-        ProjectStatus.CHANGES_REQUESTED: "in_progress",
-        ProjectStatus.SUBMITTED: "in_review",
-        ProjectStatus.UNDER_REVIEW: "in_review",
-        ProjectStatus.VERIFIED: "completed",
-        ProjectStatus.COMPLETED: "completed",
-        ProjectStatus.CLOSED: "completed",
+        "DRAFT": "in_progress",
+        "OPEN": "in_progress",
+        "ASSIGNED": "in_progress",
+        "IN_PROGRESS": "in_progress",
+        "CHANGES_REQUESTED": "in_progress",
+        "SUBMITTED": "in_review",
+        "UNDER_REVIEW": "in_review",
+        "VERIFIED": "completed",
+        "COMPLETED": "completed",
+        "CLOSED": "completed",
     }
-    task_status = status_map.get(proj.status, "in_progress")
+    task_status = status_map.get(status_str, "in_progress")
 
     return {
         "id": str(proj.id),

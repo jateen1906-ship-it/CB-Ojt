@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import VerificationEvent, VerificationStatus, VerifiedWorkRecord
+from app.models import CIWorkflowRun, VerificationEvent, VerificationStatus, VerifiedWorkRecord
 
 
 class VerificationRepository:
@@ -72,4 +72,28 @@ class VerificationRepository:
 
     def add_event(self, event: VerificationEvent) -> None:
         self.session.add(event)
+
+    def add_ci_workflow_run(self, run: CIWorkflowRun) -> None:
+        self.session.add(run)
+
+    async def get_latest_ci_run_by_sha(self, head_sha: str) -> CIWorkflowRun | None:
+        stmt = (
+            select(CIWorkflowRun)
+            .where(CIWorkflowRun.head_sha == head_sha)
+            .order_by(CIWorkflowRun.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def get_latest_ci_run_by_pr(self, repository: str, pr_number: int) -> CIWorkflowRun | None:
+        stmt = (
+            select(CIWorkflowRun)
+            .where(
+                CIWorkflowRun.repository_full_name == repository,
+                CIWorkflowRun.pr_number == pr_number,
+            )
+            .order_by(CIWorkflowRun.created_at.desc())
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 

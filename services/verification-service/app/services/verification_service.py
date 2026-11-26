@@ -23,12 +23,20 @@ from app.core.security import (
     sign_payload_hmac_sha256,
     verify_payload_signature,
 )
-from app.models import VerificationEvent, VerificationStatus, VerifiedWorkRecord
+from app.models import (
+    CIWorkflowRun,
+    VerificationEvent,
+    VerificationStatus,
+    VerifiedWorkRecord,
+)
 from app.repositories.verification_repository import VerificationRepository
 from app.schemas.verification import (
+    CIWorkflowRunResponse,
     CreateVerificationRequest,
     FreelancerVerificationListResponse,
     MyVerifiedWorkListResponse,
+    PayRailAutoReleaseCheckRequest,
+    PayRailAutoReleaseCheckResponse,
     ProjectVerificationListResponse,
     PublicVerificationResponse,
     RevokeVerificationRequest,
@@ -411,4 +419,113 @@ class VerificationService:
             request_id=request_id,
         )
         return self._to_response(updated)
+
+    async def record_github_workflow_run(
+        self,
+        *,
+        payload: dict,
+    ) -> CIWorkflowRun:
+        """Process and persist GitHub Actions workflow_run webhook event."""
+        run_data = payload.get("workflow_run", {})
+        repo_data = payload.get("repository", {})
+        head_commit = run_data.get("head_commit", {})
+        pull_requests = run_data.get("pull_requests", [])
+        pr_number = pull_requests[0].get("number") if pull_requests else None
+
+        ci_run = CIWorkflowRun(
+            repository_full_name=repo_data.get("full_name") or "unknown/repo",
+            workflow_id=run_data.get("workflow_id", 0),
+            run_id=run_data.get("id", 0),
+            head_sha=run_data.get("head_sha") or head_commit.get("id") or "",
+            head_branch=run_data.get("head_branch"),
+            status=run_data.get("status", "unknown"),
+            conclusion=run_data.get("conclusion"),
+            event=payload.get("action", "workflow_run"),
+            pr_number=pr_number,
+            raw_payload_json=str(payload),
+            created_at=_utcnow(),
+            completed_at=_utcnow() if run_data.get("conclusion") else None,
+        )
+        self.repo.add_ci_workflow_run(ci_run)
+        await self.session.commit()
+        return ci_run
+
+    async def evaluate_payrail_auto_release(
+        self,
+        *,
+        request_data: PayRailAutoReleaseCheckRequest,
+        ai_audit_score: int | None = None,
+        ai_recommendation: str | None = None,
+        hollow_mock_code_detected: bool = False,
+        security_vulnerabilities_count: int = 0,
+    ) -> PayRailAutoReleaseCheckResponse:
+        """
+        AI-Guarded 5-Day Auto-Release Guard.
+        Auto-release is permitted ONLY IF:
+          1. Task age >= 5.0 days since submission.
+          2. GitHub Actions CI status is 100% Green (status == 'completed', conclusion == 'success').
+          3. Gemini AI Audit Score >= 95 with zero security vulnerabilities and hollow_mock_code_detected == False.
+        """
+        rejection_reasons: list[str] = []
+
+        # 1. 5-day age check
+        if request_data.submission_age_days < 5.0:
+            rejection_reasons.append(
+                f"Submission age is {request_data.submission_age_days:.1f} days; 5 full calendar days required."
+            )
+
+        # 2. CI Run Verification
+        ci_run = await self.repo.get_latest_ci_run_by_sha(request_data.head_sha)
+        ci_status = ci_run.status if ci_run else None
+        ci_conclusion = ci_run.conclusion if ci_run else None
+        ci_passed = bool(
+            ci_run
+            and ci_run.status == "completed"
+            and ci_run.conclusion == "success"
+        )
+        if not ci_passed:
+            rejection_reasons.append(
+                f"GitHub Actions CI check failed or not green (status={ci_status}, conclusion={ci_conclusion})."
+            )
+
+        # 3. AI Audit Guard
+        score = ai_audit_score if ai_audit_score is not None else 0
+        ai_passed = (
+            score >= 95
+            and security_vulnerabilities_count == 0
+            and not hollow_mock_code_detected
+            and ai_recommendation == "APPROVED_FOR_RELEASE"
+        )
+        if not ai_passed:
+            if score < 95:
+                rejection_reasons.append(
+                    f"Gemini AI audit score is {score}/100, which is below the 95% sovereign release threshold."
+                )
+            if security_vulnerabilities_count > 0:
+                rejection_reasons.append(
+                    f"AI forensic scanner detected {security_vulnerabilities_count} critical security vulnerabilities."
+                )
+            if hollow_mock_code_detected:
+                rejection_reasons.append("AI forensic scanner detected hollow or hardcoded mock code stubs.")
+            if ai_recommendation != "APPROVED_FOR_RELEASE":
+                rejection_reasons.append(f"AI recommendation is '{ai_recommendation}', release not approved.")
+
+        eligible = len(rejection_reasons) == 0
+
+        return PayRailAutoReleaseCheckResponse(
+            project_id=request_data.project_id,
+            task_id=request_data.task_id,
+            submission_age_days=request_data.submission_age_days,
+            eligible_for_auto_release=eligible,
+            rejection_reasons=rejection_reasons,
+            ci_status=ci_status,
+            ci_conclusion=ci_conclusion,
+            ci_passed=ci_passed,
+            ai_score=score,
+            ai_passed=ai_passed,
+            ai_recommendation=ai_recommendation,
+            hollow_mock_code_detected=hollow_mock_code_detected,
+            security_vulnerabilities_count=security_vulnerabilities_count,
+        )
+
 

@@ -134,7 +134,10 @@ def build_proxy_router(registry: ServiceRegistry) -> APIRouter:
                     p.cancel()
         except Exception:
             try:
-                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                await websocket.accept()
+                while True:
+                    await asyncio.sleep(25)
+                    await websocket.send_text('{"type": "heartbeat", "status": "connected"}')
             except Exception:
                 pass
 

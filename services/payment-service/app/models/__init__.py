@@ -2,9 +2,12 @@
 
 from app.models.base import Base
 from app.models.payment import (
+    DeveloperTdsLedger,
+    EscrowMilestone,
     EscrowPayment,
     EscrowStatus,
     EscrowTransaction,
+    MilestoneEscrowStatus,
     PaymentEvent,
     PaymentIdempotencyRecord,
     TransactionType,
@@ -12,9 +15,12 @@ from app.models.payment import (
 
 __all__ = [
     "Base",
+    "DeveloperTdsLedger",
+    "EscrowMilestone",
     "EscrowPayment",
     "EscrowStatus",
     "EscrowTransaction",
+    "MilestoneEscrowStatus",
     "PaymentEvent",
     "PaymentIdempotencyRecord",
     "TransactionType",
