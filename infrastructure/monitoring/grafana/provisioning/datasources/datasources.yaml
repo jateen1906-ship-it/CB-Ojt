@@ -5,10 +5,10 @@ datasources:
     uid: CodeBridge-Projects
     type: postgres
     access: proxy
-    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
-    user: neondb_owner
+    url: ${POSTGRES_HOST}:5432
+    user: ${GRAFANA_DB_USER}
     secureJsonData:
-      password: npg_qB9SonVRFZ5O
+      password: ${GRAFANA_DB_PASSWORD}
     jsonData:
       database: codebridge_project
       sslmode: require
@@ -23,10 +23,10 @@ datasources:
     uid: CodeBridge-Payments
     type: postgres
     access: proxy
-    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
-    user: neondb_owner
+    url: ${POSTGRES_HOST}:5432
+    user: ${GRAFANA_DB_USER}
     secureJsonData:
-      password: npg_qB9SonVRFZ5O
+      password: ${GRAFANA_DB_PASSWORD}
     jsonData:
       database: codebridge_payment
       sslmode: require
@@ -40,10 +40,10 @@ datasources:
     uid: CodeBridge-Identity
     type: postgres
     access: proxy
-    url: ep-dark-paper-b3b7kqq1.c-4.ap-southeast-1.aws.neon.tech:5432
-    user: neondb_owner
+    url: ${POSTGRES_HOST}:5432
+    user: ${GRAFANA_DB_USER}
     secureJsonData:
-      password: npg_qB9SonVRFZ5O
+      password: ${GRAFANA_DB_PASSWORD}
     jsonData:
       database: codebridge_identity
       sslmode: require
