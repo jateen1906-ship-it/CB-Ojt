@@ -147,11 +147,11 @@ async def test_register_invalid_email_rejected(
 @pytest.mark.parametrize(
     "weak_password",
     [
-        "Short1!",  # < 8 chars
-        "alllowercase123!",  # missing uppercase
-        "ALLUPPERCASE123!",  # missing lowercase
-        "NoDigitsHere!@#",  # missing digit
-        "NoSpecialChars123",  # missing special char
+        "Short1!",  # < 12 chars
+        "Elevenchars",  # 11 chars
+        "aaaaaaaaaaaaaaaa",  # only 1 distinct character
+        "abababababababab",  # only 2 distinct characters
+        "abcdabcdabcdabcd",  # only 4 distinct characters
     ],
 )
 async def test_register_weak_passwords_rejected(

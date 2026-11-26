@@ -90,16 +90,12 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def _validate_password_strength(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("Password must be at least 8 characters.")
-        if not any(c.islower() for c in value):
-            raise ValueError("Password must contain a lowercase letter.")
-        if not any(c.isupper() for c in value):
-            raise ValueError("Password must contain an uppercase letter.")
-        if not any(c.isdigit() for c in value):
-            raise ValueError("Password must contain a digit.")
-        if all(c.isalnum() for c in value):
-            raise ValueError("Password must contain a special character.")
+        # Length-based policy (NIST SP 800-63B), kept in sync with the frontend's
+        # lib/password.ts: >= 12 characters and >= 5 distinct characters.
+        if len(value) < 12:
+            raise ValueError("Password must be at least 12 characters.")
+        if len(set(value)) < 5:
+            raise ValueError("Password must use at least 5 different characters.")
         return value
 
 
