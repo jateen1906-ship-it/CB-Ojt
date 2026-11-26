@@ -1,0 +1,56 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PORT=8000 \
+    IDENTITY_SERVICE_URL=http://127.0.0.1:8001 \
+    PROJECT_SERVICE_URL=http://127.0.0.1:8002 \
+    GITHUB_SERVICE_URL=http://127.0.0.1:8003 \
+    CODE_CONTEXT_SERVICE_URL=http://127.0.0.1:8004 \
+    WORKSPACE_SERVICE_URL=http://127.0.0.1:8005 \
+    REVIEW_SERVICE_URL=http://127.0.0.1:8006 \
+    VERIFICATION_SERVICE_URL=http://127.0.0.1:8007 \
+    PAYMENT_SERVICE_URL=http://127.0.0.1:8008 \
+    NOTIFICATION_SERVICE_URL=http://127.0.0.1:8009 \
+    ADMIN_SERVICE_URL=http://127.0.0.1:8010 \
+    AUDIT_SERVICE_URL=http://127.0.0.1:8011 \
+    OBSERVABILITY_SERVICE_URL=http://127.0.0.1:8012
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY api-gateway/requirements.txt /tmp/req_gateway.txt
+COPY services/identity-service/requirements.txt /tmp/req_identity.txt
+COPY services/project-service/requirements.txt /tmp/req_project.txt
+COPY services/workspace-service/requirements.txt /tmp/req_workspace.txt
+COPY services/github-service/requirements.txt /tmp/req_github.txt
+COPY services/code-context-service/requirements.txt /tmp/req_context.txt
+COPY services/review-service/requirements.txt /tmp/req_review.txt
+COPY services/verification-service/requirements.txt /tmp/req_verify.txt
+COPY services/payment-service/requirements.txt /tmp/req_payment.txt
+COPY services/notification-service/requirements.txt /tmp/req_notification.txt
+COPY services/admin-service/requirements.txt /tmp/req_admin.txt
+COPY services/audit-service/requirements.txt /tmp/req_audit.txt
+COPY services/observability-service/requirements.txt /tmp/req_observability.txt
+
+RUN cat /tmp/req_*.txt | sort -u > /tmp/all_requirements.txt && \
+    pip install --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/all_requirements.txt && \
+    rm -f /tmp/req_*.txt /tmp/all_requirements.txt
+
+COPY shared /app/shared
+COPY api-gateway /app/api-gateway
+COPY services /app/services
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://127.0.0.1:${PORT}/health || exit 1
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
