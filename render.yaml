@@ -54,9 +54,9 @@ services:
     envVars:
       - fromGroup: codebridge-shared
       - key: IDENTITY_SERVICE_URL
-        value: https://codebridge-backend.onrender.com
+        value: https://codebridge-backend-cb2m.onrender.com
       - key: PROJECT_SERVICE_URL
-        value: https://codebridge-backend.onrender.com
+        value: https://codebridge-backend-cb2m.onrender.com
       - key: VERIFICATION_SIGNING_SECRET
         generateValue: true
       - key: GITHUB_TOKEN_ENCRYPTION_KEY   # base64 of 32 random bytes
