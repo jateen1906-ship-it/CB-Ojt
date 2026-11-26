@@ -15,5 +15,5 @@
 **/*.db
 **/*.sqlite3
 docs
-infrastructure/monitoring
+infrastructure/monitoring/prometheus
 *.md
