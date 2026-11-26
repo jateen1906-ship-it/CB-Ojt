@@ -4,6 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=8000 \
+    PYTHONMALLOC=malloc \
     IDENTITY_SERVICE_URL=http://127.0.0.1:8001 \
     PROJECT_SERVICE_URL=http://127.0.0.1:8002 \
     GITHUB_SERVICE_URL=http://127.0.0.1:8003 \
@@ -28,15 +29,8 @@ COPY api-gateway/requirements.txt /tmp/req_gateway.txt
 COPY services/identity-service/requirements.txt /tmp/req_identity.txt
 COPY services/project-service/requirements.txt /tmp/req_project.txt
 COPY services/workspace-service/requirements.txt /tmp/req_workspace.txt
-COPY services/github-service/requirements.txt /tmp/req_github.txt
-COPY services/code-context-service/requirements.txt /tmp/req_context.txt
-COPY services/review-service/requirements.txt /tmp/req_review.txt
-COPY services/verification-service/requirements.txt /tmp/req_verify.txt
 COPY services/payment-service/requirements.txt /tmp/req_payment.txt
 COPY services/notification-service/requirements.txt /tmp/req_notification.txt
-COPY services/admin-service/requirements.txt /tmp/req_admin.txt
-COPY services/audit-service/requirements.txt /tmp/req_audit.txt
-COPY services/observability-service/requirements.txt /tmp/req_observability.txt
 
 RUN cat /tmp/req_*.txt | sort -u > /tmp/all_requirements.txt && \
     pip install --upgrade pip && \
