@@ -90,8 +90,16 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def _validate_password_strength(cls, value: str) -> str:
-        if len(value) < 6:
-            raise ValueError("Password must be at least 6 characters.")
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        if not any(c.islower() for c in value):
+            raise ValueError("Password must contain a lowercase letter.")
+        if not any(c.isupper() for c in value):
+            raise ValueError("Password must contain an uppercase letter.")
+        if not any(c.isdigit() for c in value):
+            raise ValueError("Password must contain a digit.")
+        if all(c.isalnum() for c in value):
+            raise ValueError("Password must contain a special character.")
         return value
 
 
