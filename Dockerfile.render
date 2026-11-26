@@ -1,30 +1,25 @@
+# Render service #1: public API gateway + identity, project, workspace,
+# payment and notification services in one container (fits the 512 MB tier).
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PORT=8000 \
-    APP_ENV=development \
-    PYTHONMALLOC=malloc \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=10000 \
+    MALLOC_ARENA_MAX=2 \
+    KAFKA_ENABLED=false \
+    WORKSPACE_ALLOW_MOCK_IN_PRODUCTION=true \
     IDENTITY_SERVICE_URL=http://127.0.0.1:8001 \
     PROJECT_SERVICE_URL=http://127.0.0.1:8002 \
-    GITHUB_SERVICE_URL=http://127.0.0.1:8003 \
-    CODE_CONTEXT_SERVICE_URL=http://127.0.0.1:8004 \
     WORKSPACE_SERVICE_URL=http://127.0.0.1:8005 \
-    REVIEW_SERVICE_URL=http://127.0.0.1:8006 \
-    VERIFICATION_SERVICE_URL=http://127.0.0.1:8007 \
     PAYMENT_SERVICE_URL=http://127.0.0.1:8008 \
-    NOTIFICATION_SERVICE_URL=http://127.0.0.1:8009 \
-    ADMIN_SERVICE_URL=http://127.0.0.1:8010 \
-    AUDIT_SERVICE_URL=http://127.0.0.1:8011 \
-    OBSERVABILITY_SERVICE_URL=http://127.0.0.1:8012
+    NOTIFICATION_SERVICE_URL=http://127.0.0.1:8009
+
+# GITHUB/REVIEW/VERIFICATION/ADMIN/AUDIT/CODE_CONTEXT/OBSERVABILITY_SERVICE_URL
+# must point at Render service #2 (set them in the Render dashboard).
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    supervisor \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY api-gateway/requirements.txt /tmp/req_gateway.txt
 COPY services/identity-service/requirements.txt /tmp/req_identity.txt
@@ -33,19 +28,22 @@ COPY services/workspace-service/requirements.txt /tmp/req_workspace.txt
 COPY services/payment-service/requirements.txt /tmp/req_payment.txt
 COPY services/notification-service/requirements.txt /tmp/req_notification.txt
 
-RUN cat /tmp/req_*.txt | sort -u > /tmp/all_requirements.txt && \
-    pip install --upgrade pip && \
+RUN cat /tmp/req_*.txt | grep -viE '^(pytest|pytest-asyncio)([<>=~ ]|$)' | sort -u > /tmp/all_requirements.txt && \
     pip install --no-cache-dir -r /tmp/all_requirements.txt && \
     rm -f /tmp/req_*.txt /tmp/all_requirements.txt
 
 COPY shared /app/shared
 COPY api-gateway /app/api-gateway
-COPY services /app/services
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY services/identity-service /app/services/identity-service
+COPY services/project-service /app/services/project-service
+COPY services/workspace-service /app/services/workspace-service
+COPY services/payment-service /app/services/payment-service
+COPY services/notification-service /app/services/notification-service
+COPY render_launcher.py /app/render_launcher.py
 COPY entrypoint.sh /app/entrypoint.sh
 
-RUN chmod +x /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-EXPOSE 8000 10000
+EXPOSE 10000
 
 CMD ["/bin/bash", "/app/entrypoint.sh"]

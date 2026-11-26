@@ -1,18 +1,23 @@
+# Render service #2: nginx front + github, review, verification, admin and
+# audit services in one container (fits the 512 MB tier).
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PORT=8000 \
-    APP_ENV=development \
-    PYTHONMALLOC=malloc
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=10000 \
+    MALLOC_ARENA_MAX=2 \
+    KAFKA_ENABLED=false \
+    GITHUB_SERVICE_URL=http://127.0.0.1:8003 \
+    REVIEW_SERVICE_URL=http://127.0.0.1:8006 \
+    VERIFICATION_SERVICE_URL=http://127.0.0.1:8007 \
+    ADMIN_SERVICE_URL=http://127.0.0.1:8010 \
+    AUDIT_SERVICE_URL=http://127.0.0.1:8011
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    supervisor \
-    nginx \
-    curl \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx \
     && rm -rf /var/lib/apt/lists/*
 
 COPY services/github-service/requirements.txt /tmp/req_github.txt
@@ -21,19 +26,22 @@ COPY services/verification-service/requirements.txt /tmp/req_verify.txt
 COPY services/admin-service/requirements.txt /tmp/req_admin.txt
 COPY services/audit-service/requirements.txt /tmp/req_audit.txt
 
-RUN cat /tmp/req_*.txt | sort -u > /tmp/all_requirements.txt && \
-    pip install --upgrade pip && \
+RUN cat /tmp/req_*.txt | grep -viE '^(pytest|pytest-asyncio)([<>=~ ]|$)' | sort -u > /tmp/all_requirements.txt && \
     pip install --no-cache-dir -r /tmp/all_requirements.txt && \
     rm -f /tmp/req_*.txt /tmp/all_requirements.txt
 
 COPY shared /app/shared
-COPY services /app/services
-COPY supervisord.render2.conf /etc/supervisor/conf.d/supervisord.conf
+COPY services/github-service /app/services/github-service
+COPY services/review-service /app/services/review-service
+COPY services/verification-service /app/services/verification-service
+COPY services/admin-service /app/services/admin-service
+COPY services/audit-service /app/services/audit-service
+COPY render_launcher.py /app/render_launcher.py
 COPY nginx.render2.conf /etc/nginx/nginx.conf
 COPY entrypoint.render2.sh /app/entrypoint.render2.sh
 
-RUN chmod +x /app/entrypoint.render2.sh
+RUN sed -i 's/\r$//' /app/entrypoint.render2.sh && chmod +x /app/entrypoint.render2.sh
 
-EXPOSE 8000 10000
+EXPOSE 10000
 
 CMD ["/bin/bash", "/app/entrypoint.render2.sh"]
