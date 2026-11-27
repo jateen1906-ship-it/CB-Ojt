@@ -142,3 +142,75 @@ class AssignmentService:
             updated_at=assignment.updated_at,
             cancelled_at=assignment.cancelled_at,
         )
+
+    async def accept_project(
+        self,
+        *,
+        project_id: uuid.UUID,
+        freelancer: AuthenticatedUser,
+        request_id: str,
+    ) -> AssignmentResponse:
+        """Allow an authenticated FREELANCER to self-accept an OPEN project transactionally."""
+        if freelancer.role != UserRole.FREELANCER:
+            raise ForbiddenError("Only FREELANCER accounts may accept projects.")
+
+        project = await self.project_repo.get_by_id(
+            project_id,
+            include_relations=False,
+            for_update=True,
+        )
+        if project is None:
+            raise ProjectNotFoundError()
+        if project.owner_id == freelancer.id:
+            raise InvalidFreelancerError("Project owner cannot accept their own project.")
+
+        active_assignment = await self.assignment_repo.get_active_by_project_id(
+            project_id,
+            for_update=True,
+        )
+        if active_assignment is not None or project.status in {
+            ProjectStatus.ASSIGNED,
+            ProjectStatus.IN_PROGRESS,
+        }:
+            raise ConcurrentAssignmentConflictError(
+                "Project was already accepted or assigned."
+            )
+        self.state_service.validate_assignment(project, has_active_assignment=False)
+
+        now = utc_now()
+        try:
+            assignment = await self.assignment_repo.create_assignment(
+                project_id=project.id,
+                freelancer_id=freelancer.id,
+                assigned_by=freelancer.id,
+                assigned_at=now,
+            )
+            project.status = ProjectStatus.IN_PROGRESS
+            project.updated_at = now
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ConcurrentAssignmentConflictError() from exc
+
+        logger.info(
+            "Freelancer accepted project",
+            extra={
+                "event": "freelancer_accepted_project",
+                "user_id": str(freelancer.id),
+                "role": freelancer.role.value,
+                "project_id": str(project.id),
+                "assignment_id": str(assignment.id),
+                "freelancer_id": str(freelancer.id),
+            },
+        )
+        return AssignmentResponse(
+            id=assignment.id,
+            project_id=assignment.project_id,
+            freelancer_id=assignment.freelancer_id,
+            assigned_by=assignment.assigned_by,
+            status=assignment.status,
+            project_status=project.status,
+            assigned_at=assignment.assigned_at,
+            updated_at=assignment.updated_at,
+            cancelled_at=assignment.cancelled_at,
+        )

@@ -8,12 +8,15 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.identity_client import IdentityClient
+from app.core.config import Settings
 from app.core.database import get_db_session
-from app.core.dependencies import get_identity_client, require_owner
+from app.core.dependencies import get_identity_client, get_settings, require_freelancer, require_owner
 from app.core.security import AuthenticatedUser, get_request_id
 from app.schemas.assignment import AssignmentResponse, SelectFreelancerRequest
 from app.schemas.common import ErrorResponse
+from app.schemas.project import ProjectResponse
 from app.services.assignment_service import AssignmentService
+from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/projects", tags=["Assignments"])
 
@@ -50,10 +53,48 @@ async def select_freelancer(
     identity_client: IdentityClient = Depends(get_identity_client),
 ) -> AssignmentResponse:
     service = AssignmentService(session, identity_client)
-    return await service.select_freelancer(
+    result = await service.select_freelancer(
         project_id=project_id,
         owner=current_owner,
         freelancer_id=payload.freelancer_id,
         request_id=get_request_id(request),
     )
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.delete_pattern("codebridge:projects:list:*")
+        await redis_mgr.delete_pattern(f"codebridge:project:{project_id}")
+    return result
+
+
+@router.post(
+    "/{project_id}/accept",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Accept an OPEN project task (FREELANCER only)",
+    description=(
+        "Allows an authenticated FREELANCER to accept an OPEN project, creating an ACTIVE "
+        "Assignment and transitioning project status to IN_PROGRESS."
+    ),
+)
+async def accept_project(
+    project_id: uuid.UUID,
+    request: Request,
+    current_freelancer: AuthenticatedUser = Depends(require_freelancer),
+    session: AsyncSession = Depends(get_db_session),
+    identity_client: IdentityClient = Depends(get_identity_client),
+    settings: Settings = Depends(get_settings),
+) -> ProjectResponse:
+    assignment_service = AssignmentService(session, identity_client)
+    await assignment_service.accept_project(
+        project_id=project_id,
+        freelancer=current_freelancer,
+        request_id=get_request_id(request),
+    )
+    redis_mgr = getattr(request.app.state, "redis_manager", None)
+    if redis_mgr and redis_mgr.is_available:
+        await redis_mgr.delete_pattern("codebridge:projects:list:*")
+        await redis_mgr.delete_pattern(f"codebridge:project:{project_id}")
+
+    project_service = ProjectService(session, settings, identity_client=identity_client)
+    return await project_service.get_project(project_id=project_id, viewer=current_freelancer)
 

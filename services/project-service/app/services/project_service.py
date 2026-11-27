@@ -9,6 +9,7 @@ from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.identity_client import IdentityClient
 from app.core.config import Settings
 from app.core.exceptions import (
     ForbiddenError,
@@ -38,12 +39,39 @@ logger = get_logger("services.project")
 class ProjectService:
     """Orchestrates project lifecycle operations with strict ownership and RBAC enforcement."""
 
-    def __init__(self, session: AsyncSession, settings: Settings) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        settings: Settings,
+        identity_client: IdentityClient | None = None,
+    ) -> None:
         self.session = session
         self.settings = settings
+        self.identity_client = identity_client
         self.project_repo = ProjectRepository(session)
         self.assignment_repo = AssignmentRepository(session)
         self.state_service = ProjectStateService()
+
+    async def _resolve_freelancer_name(
+        self,
+        freelancer_id: uuid.UUID,
+        cache: dict[uuid.UUID, str | None],
+    ) -> str | None:
+        if freelancer_id in cache:
+            return cache[freelancer_id]
+        if self.identity_client is None:
+            cache[freelancer_id] = None
+            return None
+        try:
+            verified = await self.identity_client.verify_freelancer(
+                freelancer_id,
+                request_id="project-freelancer-lookup",
+            )
+            cache[freelancer_id] = verified.full_name
+            return verified.full_name
+        except Exception:
+            cache[freelancer_id] = None
+            return None
 
     async def create_project(
         self,
@@ -114,7 +142,16 @@ class ProjectService:
             sort_order=sort_order,
         )
         total_pages = math.ceil(total / page_size) if total > 0 else 0
-        items = [self._to_project_response(p, viewer=viewer) for p in projects]
+        name_cache: dict[uuid.UUID, str | None] = {}
+        items: list[ProjectResponse] = []
+        for p in projects:
+            active = self._find_active_assignment(p)
+            fname = (
+                await self._resolve_freelancer_name(active.freelancer_id, name_cache)
+                if active is not None
+                else None
+            )
+            items.append(self._to_project_response(p, viewer=viewer, freelancer_name=fname))
         return ProjectListResponse(
             items=items,
             total=total,
@@ -135,7 +172,13 @@ class ProjectService:
             raise ProjectNotFoundError()
 
         self._enforce_read_access(project=project, viewer=viewer)
-        return self._to_project_response(project, viewer=viewer)
+        active = self._find_active_assignment(project)
+        fname = (
+            await self._resolve_freelancer_name(active.freelancer_id, {})
+            if active is not None
+            else None
+        )
+        return self._to_project_response(project, viewer=viewer, freelancer_name=fname)
 
     async def update_project(
         self,
@@ -443,6 +486,7 @@ class ProjectService:
         project: Project,
         *,
         viewer: AuthenticatedUser,
+        freelancer_name: str | None = None,
     ) -> ProjectResponse:
         req = project.requirement
         active = cls._find_active_assignment(project)
@@ -470,5 +514,6 @@ class ProjectService:
             published_at=project.published_at,
             closed_at=project.closed_at,
             active_assignment=assignment_summary,
+            freelancerName=freelancer_name if assignment_summary is not None else None,
         )
 
