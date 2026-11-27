@@ -124,7 +124,11 @@ async def list_projects(
         if cached is not None:
             return ProjectListResponse.model_validate(cached)
 
-    service = ProjectService(session, settings)
+    service = ProjectService(
+        session,
+        settings,
+        identity_client=getattr(request.app.state, "identity_client", None),
+    )
     result = await service.list_projects(
         viewer=current_user,
         page=page,
@@ -175,7 +179,11 @@ async def get_project(
         if cached is not None:
             return ProjectResponse.model_validate(cached)
 
-    service = ProjectService(session, settings)
+    service = ProjectService(
+        session,
+        settings,
+        identity_client=getattr(request.app.state, "identity_client", None),
+    )
     result = await service.get_project(project_id=project_id, viewer=current_user)
 
     if redis_mgr and redis_mgr.is_available:

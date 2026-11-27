@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db_session
 from app.core.dependencies import require_any_authenticated
@@ -83,7 +84,8 @@ async def get_task_detail(
     proj = None
     try:
         pid = uuid.UUID(task_id)
-        proj = await session.get(Project, pid)
+        stmt = select(Project).options(selectinload(Project.requirements)).where(Project.id == pid)
+        proj = (await session.execute(stmt)).scalar_one_or_none()
     except Exception:
         pass
 
